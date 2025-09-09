@@ -19,13 +19,23 @@ export default {
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        
+        // Healthcare color system
+        "healthcare-blue": "hsl(var(--healthcare-blue))",
+        "healthcare-green": "hsl(var(--healthcare-green))",
+        "healthcare-mint": "hsl(var(--healthcare-mint))",
+        "healthcare-navy": "hsl(var(--healthcare-navy))",
+        "healthcare-light": "hsl(var(--healthcare-light))",
+        
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
+          glow: "hsl(var(--primary-glow))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
           foreground: "hsl(var(--secondary-foreground))",
+          glow: "hsl(var(--secondary-glow))",
         },
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
@@ -59,9 +69,18 @@ export default {
         },
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        lg: "var(--radius-lg)",
+        md: "var(--radius)",
+        sm: "var(--radius-sm)",
+      },
+      backdropBlur: {
+        glass: "16px",
+        "glass-strong": "20px",
+      },
+      boxShadow: {
+        glass: "var(--glass-shadow)",
+        "glow-primary": "0 0 30px hsl(var(--primary-glow))",
+        "glow-secondary": "0 0 30px hsl(var(--secondary-glow))",
       },
       keyframes: {
         "accordion-down": {
@@ -84,6 +103,10 @@ export default {
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "pulse-glow": "pulse-glow 2s ease-in-out infinite",
+        "float": "float 3s ease-in-out infinite",
+        "fade-in": "fade-in 0.3s ease-out",
+        "slide-up": "slide-up 0.3s ease-out",
       },
     },
   },

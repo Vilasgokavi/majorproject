@@ -2,41 +2,67 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* Healthcare AI Platform Design System */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Healthcare Color Palette */
+    --healthcare-blue: 213 94% 68%;
+    --healthcare-green: 159 84% 57%;
+    --healthcare-mint: 166 73% 89%;
+    --healthcare-navy: 217 91% 24%;
+    --healthcare-light: 210 40% 98%;
+    
+    /* Background System */
+    --background: var(--healthcare-light);
+    --background-glass: 210 40% 98% / 0.8;
+    --background-gradient: linear-gradient(135deg, hsl(213 94% 68% / 0.1), hsl(159 84% 57% / 0.1));
+    --foreground: var(--healthcare-navy);
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    /* Card System with Glassmorphism */
+    --card: 210 40% 98% / 0.9;
+    --card-glass: 210 40% 98% / 0.7;
+    --card-foreground: var(--healthcare-navy);
+    --card-border: 210 40% 90% / 0.3;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    /* Interactive Elements */
+    --primary: var(--healthcare-blue);
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: var(--healthcare-blue) / 0.2;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --secondary: var(--healthcare-green);
+    --secondary-foreground: 0 0% 100%;
+    --secondary-glow: var(--healthcare-green) / 0.2;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Status & Feedback */
+    --accent: var(--healthcare-mint);
+    --accent-foreground: var(--healthcare-navy);
+    
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 20% 65%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Form Elements */
+    --border: 210 40% 88% / 0.6;
+    --input: 210 40% 98% / 0.9;
+    --input-border: 210 40% 85%;
+    --ring: var(--healthcare-blue);
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* Layout */
+    --radius: 1rem;
+    --radius-sm: 0.75rem;
+    --radius-lg: 1.5rem;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    /* Glassmorphism Effects */
+    --glass-backdrop: blur(16px);
+    --glass-border: 210 40% 90% / 0.2;
+    --glass-shadow: 0 8px 32px hsl(213 94% 68% / 0.1);
 
-    --radius: 0.5rem;
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
     --sidebar-background: 0 0% 98%;
 
@@ -56,41 +82,42 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    /* Dark Mode Healthcare Theme */
+    --background: 217 91% 8%;
+    --background-glass: 217 91% 12% / 0.8;
+    --background-gradient: linear-gradient(135deg, hsl(213 94% 68% / 0.15), hsl(159 84% 57% / 0.1));
+    --foreground: var(--healthcare-light);
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 217 91% 12% / 0.9;
+    --card-glass: 217 91% 15% / 0.7;
+    --card-foreground: var(--healthcare-light);
+    --card-border: 217 40% 25% / 0.3;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --primary: var(--healthcare-blue);
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: var(--healthcare-blue) / 0.3;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: var(--healthcare-green);
+    --secondary-foreground: 0 0% 100%;
+    --secondary-glow: var(--healthcare-green) / 0.3;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --accent: var(--healthcare-mint);
+    --accent-foreground: var(--healthcare-navy);
+    
+    --muted: 217 91% 15%;
+    --muted-foreground: 215 20% 70%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --border: 217 40% 25% / 0.6;
+    --input: 217 91% 15% / 0.9;
+    --input-border: 217 40% 30%;
+    --ring: var(--healthcare-blue);
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --glass-backdrop: blur(20px);
+    --glass-border: 217 40% 30% / 0.3;
+    --glass-shadow: 0 8px 32px hsl(217 91% 8% / 0.3);
   }
 }
 
@@ -100,6 +127,48 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    background: var(--background-gradient);
+    min-height: 100vh;
+  }
+
+  /* Glassmorphism utilities */
+  .glass {
+    background: hsl(var(--card-glass));
+    backdrop-filter: var(--glass-backdrop);
+    border: 1px solid hsl(var(--glass-border));
+    box-shadow: var(--glass-shadow);
+  }
+
+  .glass-card {
+    @apply glass rounded-[var(--radius-lg)] p-6;
+  }
+
+  /* Healthcare specific animations */
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 20px hsl(var(--primary-glow)); }
+    50% { box-shadow: 0 0 40px hsl(var(--primary-glow)), 0 0 60px hsl(var(--primary-glow)); }
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+  }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  /* Smooth transitions */
+  .transition-smooth {
+    transition: var(--transition-smooth);
+  }
+
+  .transition-bounce {
+    transition: var(--transition-bounce);
   }
 }
