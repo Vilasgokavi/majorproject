@@ -49,7 +49,7 @@ serve(async (req) => {
         content: [
           {
             type: "text",
-            text: "You are a medical knowledge extraction AI. Extract entities (patients, conditions, medications, procedures, symptoms) and their relationships from this medical data. Return a JSON object with 'nodes' and 'edges' arrays. Each node should have: id, label, type (patient/condition/medication/procedure/symptom), data (additional info). Each edge should have: source, target, label, strength (0-1)."
+            text: "You are a medical knowledge extraction AI. Extract entities (patients, conditions, medications, procedures, symptoms) and their relationships from this medical image.\n\nCRITICAL: Assign UNIQUE x,y coordinates to each node:\n- x: 100-700\n- y: 100-500\n- Space nodes apart, no overlaps\n- Group related items logically\n\nReturn JSON with 'nodes' (id, label, type, x, y, connections, data) and 'edges' (source, target, label, strength)."
           },
           {
             type: "image_url",
@@ -66,22 +66,29 @@ serve(async (req) => {
 
 ${content}
 
-Return a JSON object with 'nodes' and 'edges' arrays. Each node should have:
-- id: unique identifier
+CRITICAL: You must assign UNIQUE x and y coordinates to each node for proper 2D layout:
+- Use x values between 100 and 700
+- Use y values between 100 and 500
+- Make sure nodes don't overlap - space them out logically
+- Group related nodes closer together
+- Keep the central entity (like patient or main condition) near center (400, 300)
+
+Return a JSON object with 'nodes' and 'edges' arrays. Each node MUST have:
+- id: unique identifier (lowercase, underscore separated)
 - label: display name
 - type: one of (patient, condition, medication, procedure, symptom)
-- x: number (200-700 for layout)
-- y: number (100-500 for layout)
+- x: number between 100-700 (REQUIRED, must be unique per node)
+- y: number between 100-500 (REQUIRED, must be unique per node)
 - connections: array of connected node ids
 - data: object with additional information
 
-Each edge should have:
+Each edge MUST have:
 - source: node id
 - target: node id
 - label: relationship description
 - strength: number between 0-1
 
-Make sure the layout is well-distributed and logical.`
+Make the layout visually appealing and well-distributed.`
       });
     }
 
@@ -110,13 +117,13 @@ Make sure the layout is well-distributed and logical.`
                   items: {
                     type: "object",
                     properties: {
-                      id: { type: "string" },
-                      label: { type: "string" },
+                      id: { type: "string", description: "Unique lowercase identifier with underscores" },
+                      label: { type: "string", description: "Display name" },
                       type: { type: "string", enum: ["patient", "condition", "medication", "procedure", "symptom"] },
-                      x: { type: "number" },
-                      y: { type: "number" },
+                      x: { type: "number", minimum: 100, maximum: 700, description: "Horizontal position - must be unique" },
+                      y: { type: "number", minimum: 100, maximum: 500, description: "Vertical position - must be unique" },
                       connections: { type: "array", items: { type: "string" } },
-                      data: { type: "object" }
+                      data: { type: "object", additionalProperties: true }
                     },
                     required: ["id", "label", "type", "x", "y", "connections"]
                   }
@@ -174,6 +181,26 @@ Make sure the layout is well-distributed and logical.`
     }
 
     const knowledgeGraph = JSON.parse(toolCall.function.arguments);
+    
+    // Ensure all nodes have valid x,y coordinates
+    if (knowledgeGraph.nodes) {
+      knowledgeGraph.nodes = knowledgeGraph.nodes.map((node: any, index: number) => {
+        // If x or y are 0 or missing, generate positions in a circular layout
+        if (!node.x || node.x === 0 || !node.y || node.y === 0) {
+          const angle = (index / knowledgeGraph.nodes.length) * 2 * Math.PI;
+          const radius = 200;
+          const centerX = 400;
+          const centerY = 300;
+          return {
+            ...node,
+            x: Math.round(centerX + radius * Math.cos(angle)),
+            y: Math.round(centerY + radius * Math.sin(angle))
+          };
+        }
+        return node;
+      });
+    }
+    
     console.log(`Extracted ${knowledgeGraph.nodes?.length || 0} nodes and ${knowledgeGraph.edges?.length || 0} edges`);
 
     return new Response(
