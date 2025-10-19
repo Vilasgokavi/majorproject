@@ -39,7 +39,16 @@ const getNodeColor = (type: string) => {
   }
 };
 
-// Sample data for demonstration
+// Helper function to calculate radial positions
+const calculateRadialPosition = (index: number, total: number, radius: number, centerX: number, centerY: number) => {
+  const angle = (index / total) * 2 * Math.PI - Math.PI / 2;
+  return {
+    x: centerX + radius * Math.cos(angle),
+    y: centerY + radius * Math.sin(angle)
+  };
+};
+
+// Sample data with clean, organized layout
 const sampleNodes: GraphNode[] = [
   {
     id: '1',
@@ -54,8 +63,8 @@ const sampleNodes: GraphNode[] = [
     id: '2',
     label: 'Diabetes',
     type: 'condition',
-    x: 600,
-    y: 200,
+    x: 550,
+    y: 150,
     connections: ['1', '5'],
     data: { severity: 'Type 2', onset: '2019' }
   },
@@ -64,7 +73,7 @@ const sampleNodes: GraphNode[] = [
     label: 'Hypertension',
     type: 'condition',
     x: 250,
-    y: 250,
+    y: 150,
     connections: ['1', '6'],
     data: { stage: 'Stage 1', controlled: true }
   },
@@ -72,7 +81,7 @@ const sampleNodes: GraphNode[] = [
     id: '4',
     label: 'Fatigue',
     type: 'symptom',
-    x: 450,
+    x: 400,
     y: 450,
     connections: ['1'],
     data: { severity: 'Moderate', frequency: 'Daily' }
@@ -81,8 +90,8 @@ const sampleNodes: GraphNode[] = [
     id: '5',
     label: 'Metformin',
     type: 'medication',
-    x: 750,
-    y: 150,
+    x: 650,
+    y: 100,
     connections: ['2'],
     data: { dosage: '500mg', frequency: 'Twice daily' }
   },
@@ -91,9 +100,27 @@ const sampleNodes: GraphNode[] = [
     label: 'ACE Inhibitor',
     type: 'medication',
     x: 150,
-    y: 200,
+    y: 100,
     connections: ['3'],
     data: { dosage: '10mg', frequency: 'Once daily' }
+  },
+  {
+    id: '7',
+    label: 'Blood Test',
+    type: 'procedure',
+    x: 550,
+    y: 450,
+    connections: ['1', '2'],
+    data: { frequency: 'Quarterly', lastDate: '2024-10-01' }
+  },
+  {
+    id: '8',
+    label: 'Dizziness',
+    type: 'symptom',
+    x: 250,
+    y: 450,
+    connections: ['3'],
+    data: { severity: 'Mild', frequency: 'Occasional' }
   },
 ];
 
@@ -103,6 +130,9 @@ const sampleEdges: GraphEdge[] = [
   { source: '1', target: '4', label: 'experiences', strength: 0.6 },
   { source: '2', target: '5', label: 'treated with', strength: 0.9 },
   { source: '3', target: '6', label: 'managed by', strength: 0.9 },
+  { source: '1', target: '7', label: 'undergoes', strength: 0.7 },
+  { source: '2', target: '7', label: 'monitors', strength: 0.8 },
+  { source: '3', target: '8', label: 'causes', strength: 0.5 },
 ];
 
 export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
@@ -215,18 +245,35 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
             
             if (!sourceNode || !targetNode || !sourceNode.x || !sourceNode.y || !targetNode.x || !targetNode.y) return null;
 
+            // Calculate midpoint for edge label
+            const midX = (sourceNode.x + targetNode.x) / 2;
+            const midY = (sourceNode.y + targetNode.y) / 2;
+
             return (
-              <line
-                key={index}
-                x1={sourceNode.x}
-                y1={sourceNode.y}
-                x2={targetNode.x}
-                y2={targetNode.y}
-                stroke="#64748b"
-                strokeWidth={2}
-                opacity={0.4}
-                className="transition-all duration-300"
-              />
+              <g key={index}>
+                <line
+                  x1={sourceNode.x}
+                  y1={sourceNode.y}
+                  x2={targetNode.x}
+                  y2={targetNode.y}
+                  stroke="hsl(var(--muted-foreground))"
+                  strokeWidth={edge.strength * 2}
+                  opacity={0.3}
+                  className="transition-all duration-300"
+                  strokeDasharray={edge.strength < 0.7 ? "5,5" : "none"}
+                />
+                {edge.label && (
+                  <text
+                    x={midX}
+                    y={midY - 5}
+                    textAnchor="middle"
+                    className="text-xs fill-muted-foreground select-none"
+                    style={{ pointerEvents: 'none' }}
+                  >
+                    {edge.label}
+                  </text>
+                )}
+              </g>
             );
           })}
 
@@ -234,13 +281,12 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
           {filteredNodes.map((node) => {
             if (!node.x || !node.y) return null;
             const isHovered = hoveredNode === node.id;
+            const nodeRadius = isHovered ? 40 : 35;
 
             return (
               <g
                 key={node.id}
-                transform={`translate(${node.x}, ${node.y})`}
-                className="cursor-pointer transition-transform duration-200"
-                style={{ transform: isHovered ? 'scale(1.2)' : 'scale(1)' }}
+                className="cursor-pointer"
                 onClick={() => onNodeClick?.(node)}
                 onMouseEnter={() => {
                   setHoveredNode(node.id);
@@ -251,24 +297,60 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                   onNodeHover?.(null);
                 }}
               >
+                {/* Node shadow/glow effect */}
                 <circle
-                  r={isHovered ? 35 : 30}
+                  cx={node.x}
+                  cy={node.y}
+                  r={nodeRadius + 5}
                   fill={getNodeColor(node.type)}
-                  stroke={isHovered ? '#ffffff' : 'none'}
-                  strokeWidth={3}
+                  opacity={isHovered ? 0.2 : 0}
+                  className="transition-all duration-200"
+                />
+                
+                {/* Main node circle */}
+                <circle
+                  cx={node.x}
+                  cy={node.y}
+                  r={nodeRadius}
+                  fill={getNodeColor(node.type)}
+                  stroke="hsl(var(--background))"
+                  strokeWidth={isHovered ? 3 : 2}
                   className="transition-all duration-200"
                   style={{
-                    filter: isHovered ? `drop-shadow(0 0 10px ${getNodeColor(node.type)})` : 'none'
+                    filter: isHovered ? `drop-shadow(0 0 12px ${getNodeColor(node.type)})` : 'none'
                   }}
                 />
+                
+                {/* Node type indicator (smaller circle) */}
+                <circle
+                  cx={node.x + 20}
+                  cy={node.y - 20}
+                  r={8}
+                  fill="hsl(var(--background))"
+                  stroke={getNodeColor(node.type)}
+                  strokeWidth={2}
+                />
+                
+                {/* Node label */}
                 <text
-                  y={-40}
+                  x={node.x}
+                  y={node.y - nodeRadius - 15}
                   textAnchor="middle"
-                  fill="currentColor"
-                  className="text-sm font-medium select-none"
+                  className="text-sm font-semibold fill-foreground select-none"
                   style={{ pointerEvents: 'none' }}
                 >
                   {node.label}
+                </text>
+                
+                {/* Node type label */}
+                <text
+                  x={node.x}
+                  y={node.y - nodeRadius - 2}
+                  textAnchor="middle"
+                  className="text-xs fill-muted-foreground select-none capitalize"
+                  style={{ pointerEvents: 'none' }}
+                >
+                  {node.type}
                 </text>
               </g>
             );
