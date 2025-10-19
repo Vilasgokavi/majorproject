@@ -11,6 +11,7 @@ const Index = () => {
   const [activeSection, setActiveSection] = useState<'upload' | 'graph' | 'insights' | 'settings'>('upload');
   const [selectedNode, setSelectedNode] = useState<any>(null);
   const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
+  const [graphData, setGraphData] = useState<any>(null);
 
   const handleNodeClick = (node: any) => {
     setSelectedNode(node);
@@ -96,11 +97,14 @@ const Index = () => {
             <FileUpload
               onFilesUploaded={(files) => {
                 setUploadedFiles(files);
-                // Auto-switch to graph view after upload
-                setTimeout(() => setActiveSection('graph'), 1000);
               }}
               onFileRemoved={(fileId) => {
                 setUploadedFiles(prev => prev.filter(f => f.id !== fileId));
+              }}
+              onKnowledgeGraphGenerated={(data) => {
+                setGraphData(data);
+                // Auto-switch to graph view after extraction
+                setTimeout(() => setActiveSection('graph'), 1500);
               }}
             />
           </div>
@@ -127,7 +131,11 @@ const Index = () => {
                 </Button>
               </div>
             </div>
-            <KnowledgeGraph onNodeClick={handleNodeClick} />
+            <KnowledgeGraph 
+              onNodeClick={handleNodeClick}
+              nodes={graphData?.nodes}
+              edges={graphData?.edges}
+            />
           </div>
         );
 

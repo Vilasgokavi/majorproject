@@ -16,17 +16,64 @@ interface UploadedFile {
 interface FileUploadProps {
   onFilesUploaded?: (files: UploadedFile[]) => void;
   onFileRemoved?: (fileId: string) => void;
+  onKnowledgeGraphGenerated?: (graphData: any) => void;
 }
 
 export const FileUpload: React.FC<FileUploadProps> = ({
   onFilesUploaded,
   onFileRemoved,
+  onKnowledgeGraphGenerated,
 }) => {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+  const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
+  const processWithAI = async (file: UploadedFile) => {
+    setIsProcessing(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file.file);
+
+      toast({
+        title: "Processing file",
+        description: "Extracting entities and relationships with AI...",
+      });
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-knowledge`,
+        {
+          method: 'POST',
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to process file');
+      }
+
+      const graphData = await response.json();
+      
+      toast({
+        title: "Success!",
+        description: `Generated knowledge graph with ${graphData.nodes?.length || 0} nodes`,
+      });
+
+      onKnowledgeGraphGenerated?.(graphData);
+    } catch (error) {
+      console.error('Error processing file:', error);
+      toast({
+        title: "Processing failed",
+        description: error instanceof Error ? error.message : "Failed to extract knowledge graph",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const newFiles: UploadedFile[] = acceptedFiles.map(file => ({
       id: Math.random().toString(36).substr(2, 9),
       name: file.name,
@@ -58,7 +105,12 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       title: "Files uploaded",
       description: `${newFiles.length} file(s) uploaded successfully`,
     });
-  }, [onFilesUploaded, toast]);
+
+    // Process the first file with AI
+    if (newFiles.length > 0) {
+      setTimeout(() => processWithAI(newFiles[0]), 1200);
+    }
+  }, [onFilesUploaded, toast, onKnowledgeGraphGenerated]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -112,10 +164,10 @@ export const FileUpload: React.FC<FileUploadProps> = ({
             isDragActive ? 'text-primary' : 'text-muted-foreground'
           }`} />
           <h3 className="text-lg font-semibold mb-2">
-            {isDragActive ? 'Drop files here' : 'Upload Medical Data'}
+            {isDragActive ? 'Drop files here' : isProcessing ? 'Processing...' : 'Upload Medical Data'}
           </h3>
           <p className="text-muted-foreground mb-4">
-            Drag and drop your files or click to browse
+            {isProcessing ? 'Extracting knowledge graph with AI...' : 'Drag and drop your files or click to browse'}
           </p>
           <div className="flex flex-wrap gap-2 justify-center text-sm text-muted-foreground">
             <span className="px-2 py-1 bg-muted rounded-md">CSV</span>
