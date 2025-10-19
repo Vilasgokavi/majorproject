@@ -1,8 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Sphere, Text, Line } from '@react-three/drei';
-import { useFrame } from '@react-three/fiber';
-import * as THREE from 'three';
 import { Search, Filter, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +8,8 @@ interface GraphNode {
   id: string;
   label: string;
   type: 'patient' | 'condition' | 'medication' | 'procedure' | 'symptom';
-  position: [number, number, number];
+  x?: number;
+  y?: number;
   connections: string[];
   data?: any;
 }
@@ -31,63 +28,15 @@ interface KnowledgeGraphProps {
   onNodeHover?: (node: GraphNode | null) => void;
 }
 
-// Animated Graph Node Component
-const GraphNodeComponent: React.FC<{
-  node: GraphNode;
-  isHovered: boolean;
-  onClick: () => void;
-  onHover: (hovered: boolean) => void;
-}> = ({ node, isHovered, onClick, onHover }) => {
-  const meshRef = useRef<THREE.Mesh>(null);
-
-  useFrame((state) => {
-    if (meshRef.current) {
-      meshRef.current.rotation.y += 0.01;
-      if (isHovered) {
-        meshRef.current.scale.setScalar(1.2);
-      } else {
-        meshRef.current.scale.lerp(new THREE.Vector3(1, 1, 1), 0.1);
-      }
-    }
-  });
-
-  const getNodeColor = (type: string) => {
-    switch (type) {
-      case 'patient': return '#2563eb';
-      case 'condition': return '#dc2626';
-      case 'medication': return '#10b981';
-      case 'procedure': return '#f59e0b';
-      case 'symptom': return '#8b5cf6';
-      default: return '#6b7280';
-    }
-  };
-
-  return (
-    <group position={node.position}>
-      <Sphere
-        ref={meshRef}
-        args={[0.5, 32, 32]}
-        onClick={onClick}
-        onPointerEnter={() => onHover(true)}
-        onPointerLeave={() => onHover(false)}
-      >
-        <meshStandardMaterial 
-          color={getNodeColor(node.type)}
-          emissive={isHovered ? getNodeColor(node.type) : '#000000'}
-          emissiveIntensity={isHovered ? 0.3 : 0}
-        />
-      </Sphere>
-      <Text
-        position={[0, 1, 0]}
-        fontSize={0.3}
-        color="white"
-        anchorX="center"
-        anchorY="middle"
-      >
-        {node.label}
-      </Text>
-    </group>
-  );
+const getNodeColor = (type: string) => {
+  switch (type) {
+    case 'patient': return '#2563eb';
+    case 'condition': return '#dc2626';
+    case 'medication': return '#10b981';
+    case 'procedure': return '#f59e0b';
+    case 'symptom': return '#8b5cf6';
+    default: return '#6b7280';
+  }
 };
 
 // Sample data for demonstration
@@ -96,7 +45,8 @@ const sampleNodes: GraphNode[] = [
     id: '1',
     label: 'Patient A',
     type: 'patient',
-    position: [0, 0, 0],
+    x: 400,
+    y: 300,
     connections: ['2', '3', '4'],
     data: { age: 45, gender: 'Male' }
   },
@@ -104,7 +54,8 @@ const sampleNodes: GraphNode[] = [
     id: '2',
     label: 'Diabetes',
     type: 'condition',
-    position: [3, 2, 1],
+    x: 600,
+    y: 200,
     connections: ['1', '5'],
     data: { severity: 'Type 2', onset: '2019' }
   },
@@ -112,7 +63,8 @@ const sampleNodes: GraphNode[] = [
     id: '3',
     label: 'Hypertension',
     type: 'condition',
-    position: [-2, 1, 2],
+    x: 250,
+    y: 250,
     connections: ['1', '6'],
     data: { stage: 'Stage 1', controlled: true }
   },
@@ -120,7 +72,8 @@ const sampleNodes: GraphNode[] = [
     id: '4',
     label: 'Fatigue',
     type: 'symptom',
-    position: [1, -2, -1],
+    x: 450,
+    y: 450,
     connections: ['1'],
     data: { severity: 'Moderate', frequency: 'Daily' }
   },
@@ -128,7 +81,8 @@ const sampleNodes: GraphNode[] = [
     id: '5',
     label: 'Metformin',
     type: 'medication',
-    position: [5, 0, 2],
+    x: 750,
+    y: 150,
     connections: ['2'],
     data: { dosage: '500mg', frequency: 'Twice daily' }
   },
@@ -136,7 +90,8 @@ const sampleNodes: GraphNode[] = [
     id: '6',
     label: 'ACE Inhibitor',
     type: 'medication',
-    position: [-4, -1, 1],
+    x: 150,
+    y: 200,
     connections: ['3'],
     data: { dosage: '10mg', frequency: 'Once daily' }
   },
@@ -159,7 +114,11 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
-  const controlsRef = useRef<any>(null);
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
   const filteredNodes = nodes.filter(node => {
     const matchesSearch = node.label.toLowerCase().includes(searchTerm.toLowerCase());
@@ -168,25 +127,26 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
   });
 
   const resetView = () => {
-    if (controlsRef.current) {
-      controlsRef.current.reset();
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  };
+
+  const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.2, 3));
+  const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.2, 0.5));
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isDragging) {
+      setPan({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
     }
   };
 
-  const EdgeComponent: React.FC<{ edge: GraphEdge }> = ({ edge }) => {
-    const sourceNode = nodes.find(n => n.id === edge.source);
-    const targetNode = nodes.find(n => n.id === edge.target);
-    
-    if (!sourceNode || !targetNode) return null;
-
-    return (
-      <Line
-        points={[sourceNode.position, targetNode.position]}
-        color="#64748b"
-        lineWidth={2}
-        opacity={0.6}
-      />
-    );
+  const handleMouseUp = () => {
+    setIsDragging(false);
   };
 
   return (
@@ -219,6 +179,12 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
           </Select>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleZoomIn}>
+            <ZoomIn className="w-4 h-4" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleZoomOut}>
+            <ZoomOut className="w-4 h-4" />
+          </Button>
           <Button variant="outline" size="sm" onClick={resetView}>
             <RotateCcw className="w-4 h-4" />
           </Button>
@@ -232,39 +198,83 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
         </p>
       </div>
 
-      {/* 3D Canvas */}
-      <Canvas camera={{ position: [10, 10, 10], fov: 60 }}>
-        <ambientLight intensity={0.3} />
-        <directionalLight position={[10, 10, 5]} intensity={1} />
-        <pointLight position={[-10, -10, -5]} intensity={0.5} />
-        
-        <OrbitControls 
-          ref={controlsRef}
-          enablePan={true}
-          enableZoom={true}
-          enableRotate={true}
-          dampingFactor={0.05}
-        />
+      {/* 2D SVG Canvas */}
+      <svg
+        ref={svgRef}
+        className="w-full h-full cursor-move"
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+      >
+        <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
+          {/* Render Edges */}
+          {edges.map((edge, index) => {
+            const sourceNode = nodes.find(n => n.id === edge.source);
+            const targetNode = nodes.find(n => n.id === edge.target);
+            
+            if (!sourceNode || !targetNode || !sourceNode.x || !sourceNode.y || !targetNode.x || !targetNode.y) return null;
 
-        {/* Render Edges */}
-        {edges.map((edge, index) => (
-          <EdgeComponent key={index} edge={edge} />
-        ))}
+            return (
+              <line
+                key={index}
+                x1={sourceNode.x}
+                y1={sourceNode.y}
+                x2={targetNode.x}
+                y2={targetNode.y}
+                stroke="#64748b"
+                strokeWidth={2}
+                opacity={0.4}
+                className="transition-all duration-300"
+              />
+            );
+          })}
 
-        {/* Render Nodes */}
-        {filteredNodes.map((node) => (
-          <GraphNodeComponent
-            key={node.id}
-            node={node}
-            isHovered={hoveredNode === node.id}
-            onClick={() => onNodeClick?.(node)}
-            onHover={(hovered) => {
-              setHoveredNode(hovered ? node.id : null);
-              onNodeHover?.(hovered ? node : null);
-            }}
-          />
-        ))}
-      </Canvas>
+          {/* Render Nodes */}
+          {filteredNodes.map((node) => {
+            if (!node.x || !node.y) return null;
+            const isHovered = hoveredNode === node.id;
+
+            return (
+              <g
+                key={node.id}
+                transform={`translate(${node.x}, ${node.y})`}
+                className="cursor-pointer transition-transform duration-200"
+                style={{ transform: isHovered ? 'scale(1.2)' : 'scale(1)' }}
+                onClick={() => onNodeClick?.(node)}
+                onMouseEnter={() => {
+                  setHoveredNode(node.id);
+                  onNodeHover?.(node);
+                }}
+                onMouseLeave={() => {
+                  setHoveredNode(null);
+                  onNodeHover?.(null);
+                }}
+              >
+                <circle
+                  r={isHovered ? 35 : 30}
+                  fill={getNodeColor(node.type)}
+                  stroke={isHovered ? '#ffffff' : 'none'}
+                  strokeWidth={3}
+                  className="transition-all duration-200"
+                  style={{
+                    filter: isHovered ? `drop-shadow(0 0 10px ${getNodeColor(node.type)})` : 'none'
+                  }}
+                />
+                <text
+                  y={-40}
+                  textAnchor="middle"
+                  fill="currentColor"
+                  className="text-sm font-medium select-none"
+                  style={{ pointerEvents: 'none' }}
+                >
+                  {node.label}
+                </text>
+              </g>
+            );
+          })}
+        </g>
+      </svg>
     </div>
   );
 };

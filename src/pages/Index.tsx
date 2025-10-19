@@ -32,7 +32,7 @@ const Index = () => {
                   AI-Powered Healthcare Knowledge Graph
                 </h1>
                 <p className="text-xl text-muted-foreground mb-8">
-                  Transform your medical data into intelligent, interactive 3D knowledge graphs
+                  Transform your medical data into intelligent, interactive 2D knowledge graphs
                 </p>
                 <div className="flex flex-wrap gap-4 justify-center">
                   <Button variant="hero" size="lg">
@@ -67,12 +67,12 @@ const Index = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Brain className="w-5 h-5 text-secondary" />
-                    3D Visualization
+                    2D Visualization
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
-                    Interactive 3D knowledge graphs with zoom, rotation, and filtering capabilities powered by Three.js.
+                    Interactive 2D knowledge graphs with zoom, pan, and filtering capabilities.
                   </p>
                 </CardContent>
               </Card>
@@ -111,7 +111,7 @@ const Index = () => {
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-bold">3D Knowledge Graph</h2>
+                <h2 className="text-2xl font-bold">2D Knowledge Graph</h2>
                 <p className="text-muted-foreground">
                   Interactive visualization of medical entities and relationships
                 </p>
