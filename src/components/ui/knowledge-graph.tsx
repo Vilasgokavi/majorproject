@@ -30,13 +30,23 @@ interface KnowledgeGraphProps {
 
 const getNodeColor = (type: string) => {
   switch (type) {
-    case 'patient': return '#2563eb';
-    case 'condition': return '#dc2626';
-    case 'medication': return '#10b981';
-    case 'procedure': return '#f59e0b';
-    case 'symptom': return '#8b5cf6';
-    default: return '#6b7280';
+    case 'patient': return '#4A90E2'; // Blue for main entity
+    case 'condition': return '#4A90E2'; // Blue for conditions
+    case 'medication': return '#F5A623'; // Orange for treatments/medications
+    case 'procedure': return '#7ED6DF'; // Light blue for tests/procedures
+    case 'symptom': return '#7DB87E'; // Green for symptoms
+    default: return '#B794F6'; // Purple for related/other
   }
+};
+
+const getNodeSize = (node: GraphNode, allNodes: GraphNode[]) => {
+  // Make patient/central nodes larger
+  if (node.type === 'patient' || node.type === 'condition') {
+    const connectionCount = node.connections.length;
+    // If node has many connections, it's likely central
+    if (connectionCount >= 3) return 50;
+  }
+  return 30;
 };
 
 // Helper function to calculate radial positions
@@ -180,52 +190,18 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
   };
 
   return (
-    <div className="glass-card h-[600px] relative overflow-hidden">
-      {/* Controls */}
-      <div className="absolute top-4 left-4 right-4 z-10 flex gap-4 items-center">
-        <div className="flex-1 flex gap-2">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search nodes..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 bg-background/80 backdrop-blur-sm"
-            />
-          </div>
-          <Select value={filterType} onValueChange={setFilterType}>
-            <SelectTrigger className="w-40 bg-background/80 backdrop-blur-sm">
-              <Filter className="w-4 h-4 mr-2" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="patient">Patients</SelectItem>
-              <SelectItem value="condition">Conditions</SelectItem>
-              <SelectItem value="medication">Medications</SelectItem>
-              <SelectItem value="procedure">Procedures</SelectItem>
-              <SelectItem value="symptom">Symptoms</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleZoomIn}>
-            <ZoomIn className="w-4 h-4" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleZoomOut}>
-            <ZoomOut className="w-4 h-4" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={resetView}>
-            <RotateCcw className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Graph Status */}
-      <div className="absolute bottom-4 left-4 z-10 bg-background/80 backdrop-blur-sm rounded-lg px-3 py-2">
-        <p className="text-sm text-muted-foreground">
-          {filteredNodes.length} nodes • {edges.length} connections
-        </p>
+    <div className="glass-card h-[600px] relative overflow-hidden bg-background">
+      {/* Minimal Controls */}
+      <div className="absolute top-4 right-4 z-10 flex gap-2">
+        <Button variant="outline" size="sm" onClick={handleZoomIn} className="bg-background/80 backdrop-blur-sm">
+          <ZoomIn className="w-4 h-4" />
+        </Button>
+        <Button variant="outline" size="sm" onClick={handleZoomOut} className="bg-background/80 backdrop-blur-sm">
+          <ZoomOut className="w-4 h-4" />
+        </Button>
+        <Button variant="outline" size="sm" onClick={resetView} className="bg-background/80 backdrop-blur-sm">
+          <RotateCcw className="w-4 h-4" />
+        </Button>
       </div>
 
       {/* 2D SVG Canvas */}
@@ -245,30 +221,43 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
             
             if (!sourceNode || !targetNode || !sourceNode.x || !sourceNode.y || !targetNode.x || !targetNode.y) return null;
 
-            // Calculate midpoint for edge label
-            const midX = (sourceNode.x + targetNode.x) / 2;
-            const midY = (sourceNode.y + targetNode.y) / 2;
+            const dx = targetNode.x - sourceNode.x;
+            const dy = targetNode.y - sourceNode.y;
+            const angle = Math.atan2(dy, dx);
+            
+            // Offset from node center to edge of circle
+            const sourceRadius = getNodeSize(sourceNode, nodes);
+            const targetRadius = getNodeSize(targetNode, nodes);
+            
+            const startX = sourceNode.x + Math.cos(angle) * sourceRadius;
+            const startY = sourceNode.y + Math.sin(angle) * sourceRadius;
+            const endX = targetNode.x - Math.cos(angle) * targetRadius;
+            const endY = targetNode.y - Math.sin(angle) * targetRadius;
+
+            // Calculate label position (closer to the line)
+            const labelX = (startX + endX) / 2;
+            const labelY = (startY + endY) / 2;
 
             return (
               <g key={index}>
                 <line
-                  x1={sourceNode.x}
-                  y1={sourceNode.y}
-                  x2={targetNode.x}
-                  y2={targetNode.y}
-                  stroke="hsl(var(--muted-foreground))"
-                  strokeWidth={edge.strength * 2}
-                  opacity={0.3}
+                  x1={startX}
+                  y1={startY}
+                  x2={endX}
+                  y2={endY}
+                  stroke="#D1D5DB"
+                  strokeWidth={1.5}
+                  opacity={0.6}
                   className="transition-all duration-300"
-                  strokeDasharray={edge.strength < 0.7 ? "5,5" : "none"}
                 />
                 {edge.label && (
                   <text
-                    x={midX}
-                    y={midY - 5}
+                    x={labelX}
+                    y={labelY - 8}
                     textAnchor="middle"
-                    className="text-xs fill-muted-foreground select-none"
-                    style={{ pointerEvents: 'none' }}
+                    className="text-[10px] select-none"
+                    fill="#9CA3AF"
+                    style={{ pointerEvents: 'none', fontWeight: 400 }}
                   >
                     {edge.label}
                   </text>
@@ -281,7 +270,8 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
           {filteredNodes.map((node) => {
             if (!node.x || !node.y) return null;
             const isHovered = hoveredNode === node.id;
-            const nodeRadius = isHovered ? 40 : 35;
+            const baseRadius = getNodeSize(node, nodes);
+            const nodeRadius = isHovered ? baseRadius * 1.1 : baseRadius;
 
             return (
               <g
@@ -297,58 +287,47 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                   onNodeHover?.(null);
                 }}
               >
-                {/* Node shadow/glow effect */}
-                <circle
-                  cx={node.x}
-                  cy={node.y}
-                  r={nodeRadius + 5}
-                  fill={getNodeColor(node.type)}
-                  opacity={isHovered ? 0.2 : 0}
-                  className="transition-all duration-200"
-                />
-                
-                {/* Main node circle */}
+                {/* Main node circle - solid color */}
                 <circle
                   cx={node.x}
                   cy={node.y}
                   r={nodeRadius}
                   fill={getNodeColor(node.type)}
-                  stroke="hsl(var(--background))"
-                  strokeWidth={isHovered ? 3 : 2}
+                  opacity={0.9}
                   className="transition-all duration-200"
                   style={{
-                    filter: isHovered ? `drop-shadow(0 0 12px ${getNodeColor(node.type)})` : 'none'
+                    filter: isHovered ? 'drop-shadow(0 4px 12px rgba(0,0,0,0.2))' : 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
                   }}
                 />
                 
-                {/* Node type indicator (smaller circle) */}
-                <circle
-                  cx={node.x + 20}
-                  cy={node.y - 20}
-                  r={8}
-                  fill="hsl(var(--background))"
-                  stroke={getNodeColor(node.type)}
-                  strokeWidth={2}
-                />
-                
-                {/* Node label */}
+                {/* Node label - below the circle */}
                 <text
                   x={node.x}
-                  y={node.y - nodeRadius - 15}
+                  y={node.y + nodeRadius + 18}
                   textAnchor="middle"
-                  className="text-sm font-semibold fill-foreground select-none"
-                  style={{ pointerEvents: 'none' }}
+                  className="select-none"
+                  style={{ 
+                    pointerEvents: 'none',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    fill: '#374151'
+                  }}
                 >
                   {node.label}
                 </text>
                 
-                {/* Node type label */}
+                {/* Node type label - below the main label */}
                 <text
                   x={node.x}
-                  y={node.y - nodeRadius - 2}
+                  y={node.y + nodeRadius + 32}
                   textAnchor="middle"
-                  className="text-xs fill-muted-foreground select-none capitalize"
-                  style={{ pointerEvents: 'none' }}
+                  className="select-none capitalize"
+                  style={{ 
+                    pointerEvents: 'none',
+                    fontSize: '11px',
+                    fontWeight: 400,
+                    fill: '#9CA3AF'
+                  }}
                 >
                   {node.type}
                 </text>
