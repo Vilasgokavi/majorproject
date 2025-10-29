@@ -146,11 +146,14 @@ const sampleEdges: GraphEdge[] = [
 ];
 
 export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
-  nodes = sampleNodes,
-  edges = sampleEdges,
+  nodes,
+  edges,
   onNodeClick,
   onNodeHover,
 }) => {
+  // Use provided data or fallback to sample data
+  const displayNodes = nodes && nodes.length > 0 ? nodes : sampleNodes;
+  const displayEdges = edges && edges.length > 0 ? edges : sampleEdges;
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
@@ -160,7 +163,7 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
-  const filteredNodes = nodes.filter(node => {
+  const filteredNodes = displayNodes.filter(node => {
     const matchesSearch = node.label.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filterType === 'all' || node.type === filterType;
     return matchesSearch && matchesFilter;
@@ -215,9 +218,9 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
       >
         <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
           {/* Render Edges */}
-          {edges.map((edge, index) => {
-            const sourceNode = nodes.find(n => n.id === edge.source);
-            const targetNode = nodes.find(n => n.id === edge.target);
+          {displayEdges.map((edge, index) => {
+            const sourceNode = displayNodes.find(n => n.id === edge.source);
+            const targetNode = displayNodes.find(n => n.id === edge.target);
             
             if (!sourceNode || !targetNode || !sourceNode.x || !sourceNode.y || !targetNode.x || !targetNode.y) return null;
 
@@ -226,8 +229,8 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
             const angle = Math.atan2(dy, dx);
             
             // Offset from node center to edge of circle
-            const sourceRadius = getNodeSize(sourceNode, nodes);
-            const targetRadius = getNodeSize(targetNode, nodes);
+            const sourceRadius = getNodeSize(sourceNode, displayNodes);
+            const targetRadius = getNodeSize(targetNode, displayNodes);
             
             const startX = sourceNode.x + Math.cos(angle) * sourceRadius;
             const startY = sourceNode.y + Math.sin(angle) * sourceRadius;
@@ -270,7 +273,7 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
           {filteredNodes.map((node) => {
             if (!node.x || !node.y) return null;
             const isHovered = hoveredNode === node.id;
-            const baseRadius = getNodeSize(node, nodes);
+            const baseRadius = getNodeSize(node, displayNodes);
             const nodeRadius = isHovered ? baseRadius * 1.1 : baseRadius;
 
             return (
