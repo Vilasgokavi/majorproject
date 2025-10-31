@@ -32,7 +32,12 @@ serve(async (req) => {
     if (file.type.startsWith("image/")) {
       // For images, convert to base64
       const arrayBuffer = await file.arrayBuffer();
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+      const bytes = new Uint8Array(arrayBuffer);
+      let binary = '';
+      for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      const base64 = btoa(binary);
       imageBase64 = `data:${file.type};base64,${base64}`;
       content = "Extract all medical entities and relationships from this medical image.";
     } else {
