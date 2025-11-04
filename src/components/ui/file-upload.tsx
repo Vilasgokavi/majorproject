@@ -48,15 +48,17 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         }
       );
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to process file');
-      }
-
       const graphData = await response.json();
-      
-      if (graphData.error || graphData.isMedical === false) {
-        throw new Error(graphData.error || 'Non-medical data detected');
+
+      // Check if it's a validation error (non-medical data)
+      if (!response.ok || graphData.error || graphData.isMedical === false) {
+        toast({
+          title: "Invalid file",
+          description: graphData.error || 'Failed to process file. Please upload medical data only.',
+          variant: "destructive",
+        });
+        setIsProcessing(false);
+        return;
       }
       
       toast({
