@@ -52,6 +52,9 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
       // Check if it's a validation error (non-medical data)
       if (!response.ok || graphData.error || graphData.isMedical === false) {
+        // Remove the invalid file from the list
+        removeFile(file.id);
+        
         toast({
           title: "Invalid file",
           description: graphData.error || 'Failed to process file. Please upload medical data only.',
@@ -69,6 +72,10 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       onKnowledgeGraphGenerated?.(graphData);
     } catch (error) {
       console.error('Error processing file:', error);
+      
+      // Remove the file if processing failed
+      removeFile(file.id);
+      
       toast({
         title: "Processing failed",
         description: error instanceof Error ? error.message : "Failed to extract knowledge graph",
