@@ -6,6 +6,7 @@ import { AIInsights } from '@/components/ui/ai-insights';
 import { Brain, Upload, Zap, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 const Index = () => {
   const [activeSection, setActiveSection] = useState<'upload' | 'graph' | 'insights' | 'settings'>('upload');
@@ -93,6 +94,33 @@ const Index = () => {
               </Card>
             </div>
 
+            {/* Uploaded Files Display */}
+            {uploadedFiles.length > 0 && (
+              <Card className="glass border-border/50">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Upload className="w-5 h-5 text-primary" />
+                    Uploaded Medical Data
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {uploadedFiles.map((file: any) => (
+                      <div key={file.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                        <div>
+                          <p className="font-medium">{file.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {(file.size / 1024).toFixed(2)} KB
+                          </p>
+                        </div>
+                        <Badge variant="outline">Processed</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* File Upload Section */}
             <FileUpload
               onFilesUploaded={(files) => {
@@ -148,7 +176,7 @@ const Index = () => {
                 Intelligent analysis and recommendations based on your knowledge graph
               </p>
             </div>
-            <AIInsights selectedNode={selectedNode} />
+            <AIInsights selectedNode={selectedNode} graphData={graphData} />
           </div>
         );
 

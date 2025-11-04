@@ -2,3 +2,9 @@ project_id = "vhcbkqvdpdyaqvytahtp"
 
 [functions.extract-knowledge]
 verify_jwt = false
+
+[functions.analyze-node]
+verify_jwt = false
+
+[functions.analyze-graph]
+verify_jwt = false

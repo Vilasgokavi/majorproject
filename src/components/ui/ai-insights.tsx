@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { Brain, Lightbulb, TrendingUp, AlertTriangle, Pill, Activity } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Brain, Lightbulb, TrendingUp, AlertTriangle, Pill, Activity, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { useToast } from '@/hooks/use-toast';
 
 interface Insight {
   id: string;
@@ -18,6 +19,7 @@ interface Insight {
 interface AIInsightsProps {
   selectedNode?: any;
   insights?: Insight[];
+  graphData?: { nodes: any[]; edges: any[] };
 }
 
 // Sample insights data
@@ -63,8 +65,93 @@ const sampleInsights: Insight[] = [
 export const AIInsights: React.FC<AIInsightsProps> = ({
   selectedNode,
   insights = sampleInsights,
+  graphData,
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'details'>('overview');
+  const [nodeAnalysis, setNodeAnalysis] = useState<string>('');
+  const [graphAnalysis, setGraphAnalysis] = useState<string>('');
+  const [isLoadingNode, setIsLoadingNode] = useState(false);
+  const [isLoadingGraph, setIsLoadingGraph] = useState(false);
+  const { toast } = useToast();
+
+  // Analyze selected node when it changes
+  useEffect(() => {
+    if (selectedNode && graphData) {
+      analyzeNode();
+    }
+  }, [selectedNode]);
+
+  const analyzeNode = async () => {
+    if (!selectedNode || !graphData) return;
+    
+    setIsLoadingNode(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-node`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            node: selectedNode,
+            allNodes: graphData.nodes,
+            allEdges: graphData.edges,
+          }),
+        }
+      );
+
+      if (!response.ok) throw new Error('Failed to analyze node');
+
+      const data = await response.json();
+      setNodeAnalysis(data.analysis);
+    } catch (error) {
+      console.error('Error analyzing node:', error);
+      toast({
+        title: 'Analysis failed',
+        description: 'Failed to generate AI analysis for this node',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoadingNode(false);
+    }
+  };
+
+  const analyzeFullGraph = async () => {
+    if (!graphData) return;
+    
+    setIsLoadingGraph(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-graph`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nodes: graphData.nodes,
+            edges: graphData.edges,
+          }),
+        }
+      );
+
+      if (!response.ok) throw new Error('Failed to analyze graph');
+
+      const data = await response.json();
+      setGraphAnalysis(data.analysis);
+      
+      toast({
+        title: 'Analysis complete',
+        description: 'Full knowledge graph analysis generated with ICD-10 codes',
+      });
+    } catch (error) {
+      console.error('Error analyzing graph:', error);
+      toast({
+        title: 'Analysis failed',
+        description: 'Failed to generate full graph analysis',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoadingGraph(false);
+    }
+  };
 
   const getInsightIcon = (type: string) => {
     switch (type) {
@@ -131,6 +218,45 @@ export const AIInsights: React.FC<AIInsightsProps> = ({
       {/* Content */}
       {activeTab === 'overview' && (
         <div className="space-y-4">
+          {/* Full Graph Analysis Button */}
+          <Card className="glass border-border/50">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h4 className="font-semibold mb-1">Complete Graph Analysis</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Get comprehensive AI analysis with ICD-10 codes
+                  </p>
+                </div>
+                <Button 
+                  onClick={analyzeFullGraph} 
+                  disabled={isLoadingGraph || !graphData}
+                  variant="medical"
+                >
+                  {isLoadingGraph ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      <Brain className="w-4 h-4" />
+                      Analyze Graph
+                    </>
+                  )}
+                </Button>
+              </div>
+              
+              {graphAnalysis && (
+                <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+                  <div className="prose prose-sm max-w-none dark:prose-invert">
+                    <div className="whitespace-pre-wrap text-sm">{graphAnalysis}</div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {insights.map((insight) => (
             <Card key={insight.id} className="glass border-border/50">
               <CardHeader className="pb-3">
@@ -183,6 +309,25 @@ export const AIInsights: React.FC<AIInsightsProps> = ({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* AI Analysis Section */}
+            {isLoadingNode ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                <span className="ml-3 text-muted-foreground">Generating AI analysis...</span>
+              </div>
+            ) : nodeAnalysis ? (
+              <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                <h4 className="font-semibold mb-3 flex items-center gap-2">
+                  <Brain className="w-4 h-4 text-primary" />
+                  AI Analysis & ICD-10 Codes
+                </h4>
+                <div className="prose prose-sm max-w-none dark:prose-invert">
+                  <div className="whitespace-pre-wrap text-sm">{nodeAnalysis}</div>
+                </div>
+              </div>
+            ) : null}
+
+            <Separator />
             <div>
               <h4 className="font-semibold mb-2">Entity Information</h4>
               <div className="grid grid-cols-2 gap-4 text-sm">
@@ -227,17 +372,6 @@ export const AIInsights: React.FC<AIInsightsProps> = ({
               )}
             </div>
 
-            <Separator />
-
-            <div>
-              <h4 className="font-semibold mb-2 flex items-center gap-2">
-                <Lightbulb className="w-4 h-4" />
-                AI Analysis
-              </h4>
-              <p className="text-sm text-muted-foreground">
-                This {selectedNode.type} entity appears to be {selectedNode.type === 'condition' ? 'well-documented with appropriate treatment protocols' : 'properly connected within the medical context'}. Consider reviewing related entities for comprehensive care.
-              </p>
-            </div>
           </CardContent>
         </Card>
       )}
