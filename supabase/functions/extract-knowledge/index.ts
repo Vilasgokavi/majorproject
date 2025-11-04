@@ -45,7 +45,63 @@ serve(async (req) => {
       content = await file.text();
     }
 
-    // Prepare messages for AI
+    // First, validate if the content is medical-related
+    console.log("Validating if content is medical-related...");
+    
+    const validationMessages: any[] = [];
+    if (imageBase64) {
+      validationMessages.push({
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: "Analyze this image and determine if it contains medical information such as: patient data, medical records, prescriptions, diagnoses, symptoms, treatments, lab results, medical imaging, or healthcare-related content. Respond with 'yes' if it's medical-related, or 'no' if it's not."
+          },
+          {
+            type: "image_url",
+            image_url: { url: imageBase64 }
+          }
+        ]
+      });
+    } else {
+      validationMessages.push({
+        role: "user",
+        content: `Analyze this text and determine if it contains medical information such as: patient data, medical records, prescriptions, diagnoses, symptoms, treatments, lab results, or healthcare-related content. Respond with 'yes' if it's medical-related, or 'no' if it's not.\n\nContent:\n${content}`
+      });
+    }
+
+    const validationResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: validationMessages,
+      }),
+    });
+
+    if (!validationResponse.ok) {
+      throw new Error(`Validation failed: ${validationResponse.status}`);
+    }
+
+    const validationData = await validationResponse.json();
+    const validationResult = validationData.choices?.[0]?.message?.content?.toLowerCase() || "";
+    
+    console.log("Validation result:", validationResult);
+    
+    if (!validationResult.includes("yes")) {
+      return new Response(
+        JSON.stringify({ 
+          error: "Non-medical data detected. Please upload medical records, patient data, prescriptions, lab results, or other healthcare-related information.",
+          isMedical: false
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Prepare messages for AI knowledge extraction
     const messages: any[] = [];
     
     if (imageBase64) {
@@ -97,7 +153,7 @@ Make the layout visually appealing and well-distributed.`
       });
     }
 
-    console.log("Calling Lovable AI Gateway...");
+    console.log("Calling Lovable AI Gateway for knowledge extraction...");
 
     // Call Lovable AI with tool calling for structured output
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {

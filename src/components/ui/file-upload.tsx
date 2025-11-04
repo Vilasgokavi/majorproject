@@ -55,6 +55,10 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
       const graphData = await response.json();
       
+      if (graphData.error || graphData.isMedical === false) {
+        throw new Error(graphData.error || 'Non-medical data detected');
+      }
+      
       toast({
         title: "Success!",
         description: `Generated knowledge graph with ${graphData.nodes?.length || 0} nodes`,
