@@ -40,22 +40,61 @@ const getNodeColor = (type: string) => {
 };
 
 const getNodeSize = (node: GraphNode, allNodes: GraphNode[]) => {
-  // Make patient/central nodes larger
-  if (node.type === 'patient' || node.type === 'condition') {
-    const connectionCount = node.connections.length;
-    // If node has many connections, it's likely central
-    if (connectionCount >= 3) return 50;
-  }
+  // Make central nodes (most connections) larger
+  const connectionCount = node.connections.length;
+  if (connectionCount >= 3) return 50;
   return 30;
 };
 
-// Helper function to calculate radial positions
-const calculateRadialPosition = (index: number, total: number, radius: number, centerX: number, centerY: number) => {
-  const angle = (index / total) * 2 * Math.PI - Math.PI / 2;
-  return {
-    x: centerX + radius * Math.cos(angle),
-    y: centerY + radius * Math.sin(angle)
-  };
+// Apply circular layout algorithm
+const applyCircularLayout = (nodes: GraphNode[], centerX: number = 400, centerY: number = 300): GraphNode[] => {
+  if (nodes.length === 0) return nodes;
+  
+  // Find the central node (most connections)
+  const centralNode = nodes.reduce((prev, current) => 
+    current.connections.length > prev.connections.length ? current : prev
+  );
+  
+  // Separate central node from peripheral nodes
+  const peripheralNodes = nodes.filter(n => n.id !== centralNode.id);
+  
+  // Position central node at center
+  const layoutNodes = nodes.map(node => {
+    if (node.id === centralNode.id) {
+      return { ...node, x: centerX, y: centerY };
+    }
+    return node;
+  });
+  
+  // Group peripheral nodes by type for color-based arrangement
+  const nodesByType: { [key: string]: GraphNode[] } = {};
+  peripheralNodes.forEach(node => {
+    if (!nodesByType[node.type]) {
+      nodesByType[node.type] = [];
+    }
+    nodesByType[node.type].push(node);
+  });
+  
+  // Calculate radius based on number of nodes
+  const radius = Math.max(180, 120 + peripheralNodes.length * 10);
+  
+  // Distribute nodes evenly in a circle
+  let currentIndex = 0;
+  const total = peripheralNodes.length;
+  
+  Object.values(nodesByType).forEach(typeNodes => {
+    typeNodes.forEach(node => {
+      const angle = (currentIndex / total) * 2 * Math.PI - Math.PI / 2;
+      const nodeInLayout = layoutNodes.find(n => n.id === node.id);
+      if (nodeInLayout) {
+        nodeInLayout.x = centerX + radius * Math.cos(angle);
+        nodeInLayout.y = centerY + radius * Math.sin(angle);
+      }
+      currentIndex++;
+    });
+  });
+  
+  return layoutNodes;
 };
 
 // Sample data with clean, organized layout
@@ -152,8 +191,12 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
   onNodeHover,
 }) => {
   // Use provided data or fallback to sample data
-  const displayNodes = nodes && nodes.length > 0 ? nodes : sampleNodes;
+  const rawNodes = nodes && nodes.length > 0 ? nodes : sampleNodes;
   const displayEdges = edges && edges.length > 0 ? edges : sampleEdges;
+  
+  // Apply circular layout to nodes
+  const displayNodes = applyCircularLayout(rawNodes);
+  
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
