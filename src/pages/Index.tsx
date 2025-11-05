@@ -33,11 +33,26 @@ const Index = () => {
     });
   };
 
-  const extractICD10Codes = (analysisText: string): string[] => {
+  const extractICD10Codes = (analysisText: string): Array<{ code: string; description: string }> => {
     if (!analysisText) return [];
-    const icdPattern = /\b[A-Z]\d{2}(?:\.\d{1,2})?\b/g;
-    const matches = analysisText.match(icdPattern) || [];
-    return [...new Set(matches)]; // Remove duplicates
+    
+    // Pattern to match ICD-10 code followed by description (up to the next code or end of line)
+    const icdPattern = /([A-Z]\d{2}(?:[.]\d{1,2})?)\s*[-–:]\s*([^.\n]+?)(?=\s*[A-Z]\d{2}[.:]|\n|$)/g;
+    const results: Array<{ code: string; description: string }> = [];
+    const seen = new Set<string>();
+    
+    let match;
+    while ((match = icdPattern.exec(analysisText)) !== null) {
+      const code = match[1].trim();
+      const description = match[2].trim();
+      
+      if (!seen.has(code)) {
+        results.push({ code, description });
+        seen.add(code);
+      }
+    }
+    
+    return results;
   };
 
   // Analyze full knowledge graph when it changes
@@ -290,15 +305,20 @@ const Index = () => {
                       <Loader2 className="w-6 h-6 animate-spin text-primary" />
                     </div>
                   ) : (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="space-y-2">
                       {extractICD10Codes(graphAnalysis).length > 0 ? (
-                        extractICD10Codes(graphAnalysis).map((code, idx) => (
-                          <Badge 
+                        extractICD10Codes(graphAnalysis).map((item, idx) => (
+                          <div 
                             key={idx} 
-                            className="px-3 py-1 text-sm font-mono bg-primary text-primary-foreground hover:bg-primary/90"
+                            className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 border border-border/50"
                           >
-                            {code}
-                          </Badge>
+                            <Badge 
+                              className="px-3 py-1 text-sm font-mono bg-primary text-primary-foreground shrink-0"
+                            >
+                              {item.code}
+                            </Badge>
+                            <p className="text-sm text-foreground leading-relaxed">{item.description}</p>
+                          </div>
                         ))
                       ) : (
                         <p className="text-sm text-muted-foreground">No ICD-10 codes identified in this analysis</p>

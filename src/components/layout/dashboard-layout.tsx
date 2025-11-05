@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Brain, Upload, BarChart3, Settings, Menu, X } from 'lucide-react';
+import { Brain, Upload, BarChart3, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -40,12 +40,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       label: 'AI Insights',
       icon: BarChart3,
       description: 'Smart analysis',
-    },
-    {
-      id: 'settings' as const,
-      label: 'Settings',
-      icon: Settings,
-      description: 'Configuration',
     },
   ];
 
