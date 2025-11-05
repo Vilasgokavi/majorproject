@@ -17,6 +17,8 @@ const Index = () => {
   const [graphData, setGraphData] = useState<any>(null);
   const [nodeAnalysis, setNodeAnalysis] = useState<string>('');
   const [isLoadingNode, setIsLoadingNode] = useState(false);
+  const [graphAnalysis, setGraphAnalysis] = useState<string>('');
+  const [isLoadingGraph, setIsLoadingGraph] = useState(false);
   const { toast } = useToast();
 
   const handleNodeClick = (node: any) => {
@@ -37,6 +39,44 @@ const Index = () => {
     const matches = analysisText.match(icdPattern) || [];
     return [...new Set(matches)]; // Remove duplicates
   };
+
+  // Analyze full knowledge graph when it changes
+  useEffect(() => {
+    if (!graphData || !graphData.nodes || graphData.nodes.length === 0) return;
+
+    const analyzeGraph = async () => {
+      setIsLoadingGraph(true);
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-graph`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              nodes: graphData.nodes,
+              edges: graphData.edges,
+            }),
+          }
+        );
+
+        if (!response.ok) throw new Error('Failed to analyze graph');
+
+        const data = await response.json();
+        setGraphAnalysis(data.analysis);
+      } catch (error) {
+        console.error('Error analyzing graph:', error);
+        toast({
+          title: 'Graph analysis failed',
+          description: 'Failed to generate AI analysis for the knowledge graph',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsLoadingGraph(false);
+      }
+    };
+
+    analyzeGraph();
+  }, [graphData, toast]);
 
   // Analyze selected node when it changes
   useEffect(() => {
@@ -236,7 +276,7 @@ const Index = () => {
             />
 
             {/* ICD-10 Codes Section */}
-            {selectedNode && nodeAnalysis && !isLoadingNode && (
+            {graphAnalysis && !isLoadingGraph && (
               <Card className="glass border-border/50 bg-gradient-to-r from-primary/10 to-secondary/10">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
@@ -245,20 +285,26 @@ const Index = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    {extractICD10Codes(nodeAnalysis).length > 0 ? (
-                      extractICD10Codes(nodeAnalysis).map((code, idx) => (
-                        <Badge 
-                          key={idx} 
-                          className="px-3 py-1 text-sm font-mono bg-primary text-primary-foreground hover:bg-primary/90"
-                        >
-                          {code}
-                        </Badge>
-                      ))
-                    ) : (
-                      <p className="text-sm text-muted-foreground">No ICD-10 codes identified in this analysis</p>
-                    )}
-                  </div>
+                  {isLoadingGraph ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {extractICD10Codes(graphAnalysis).length > 0 ? (
+                        extractICD10Codes(graphAnalysis).map((code, idx) => (
+                          <Badge 
+                            key={idx} 
+                            className="px-3 py-1 text-sm font-mono bg-primary text-primary-foreground hover:bg-primary/90"
+                          >
+                            {code}
+                          </Badge>
+                        ))
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No ICD-10 codes identified in this analysis</p>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}
