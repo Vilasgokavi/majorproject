@@ -7,12 +7,18 @@ interface DashboardLayoutProps {
   children: React.ReactNode;
   activeSection?: 'upload' | 'graph' | 'insights' | 'settings';
   onSectionChange?: (section: 'upload' | 'graph' | 'insights' | 'settings') => void;
+  uploadedFilesCount?: number;
+  nodesCount?: number;
+  edgesCount?: number;
 }
 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   children,
   activeSection = 'upload',
   onSectionChange,
+  uploadedFilesCount = 0,
+  nodesCount = 0,
+  edgesCount = 0,
 }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -124,15 +130,15 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Files uploaded:</span>
-                  <span className="font-medium">0</span>
+                  <span className="font-medium">{uploadedFilesCount}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Nodes generated:</span>
-                  <span className="font-medium">6</span>
+                  <span className="font-medium">{nodesCount}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Connections:</span>
-                  <span className="font-medium">5</span>
+                  <span className="font-medium">{edgesCount}</span>
                 </div>
               </div>
             </div>

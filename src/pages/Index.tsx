@@ -328,6 +328,9 @@ const Index = () => {
     <DashboardLayout
       activeSection={activeSection}
       onSectionChange={setActiveSection}
+      uploadedFilesCount={uploadedFiles.length}
+      nodesCount={graphData?.nodes?.length || 0}
+      edgesCount={graphData?.edges?.length || 0}
     >
       {renderContent()}
     </DashboardLayout>
