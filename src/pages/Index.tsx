@@ -1,22 +1,67 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { FileUpload } from '@/components/ui/file-upload';
 import { KnowledgeGraph } from '@/components/ui/knowledge-graph';
 import { AIInsights } from '@/components/ui/ai-insights';
-import { Brain, Upload, Zap, TrendingUp } from 'lucide-react';
+import { Brain, Upload, Zap, TrendingUp, Loader2, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { useToast } from '@/hooks/use-toast';
 
 const Index = () => {
   const [activeSection, setActiveSection] = useState<'upload' | 'graph' | 'insights' | 'settings'>('upload');
   const [selectedNode, setSelectedNode] = useState<any>(null);
   const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
   const [graphData, setGraphData] = useState<any>(null);
+  const [nodeAnalysis, setNodeAnalysis] = useState<string>('');
+  const [isLoadingNode, setIsLoadingNode] = useState(false);
+  const { toast } = useToast();
 
   const handleNodeClick = (node: any) => {
     setSelectedNode(node);
-    setActiveSection('insights');
+  };
+
+  // Analyze selected node when it changes
+  useEffect(() => {
+    if (selectedNode && graphData) {
+      analyzeNode();
+    }
+  }, [selectedNode]);
+
+  const analyzeNode = async () => {
+    if (!selectedNode || !graphData) return;
+    
+    setIsLoadingNode(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-node`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            node: selectedNode,
+            allNodes: graphData.nodes,
+            allEdges: graphData.edges,
+          }),
+        }
+      );
+
+      if (!response.ok) throw new Error('Failed to analyze node');
+
+      const data = await response.json();
+      setNodeAnalysis(data.analysis);
+    } catch (error) {
+      console.error('Error analyzing node:', error);
+      toast({
+        title: 'Analysis failed',
+        description: 'Failed to generate AI analysis for this node',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoadingNode(false);
+    }
   };
 
   const renderContent = () => {
@@ -164,6 +209,81 @@ const Index = () => {
               nodes={graphData?.nodes}
               edges={graphData?.edges}
             />
+
+            {/* Node Analysis Section */}
+            {selectedNode && (
+              <Card className="glass border-border/50">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Activity className="w-5 h-5" />
+                    {selectedNode.label} - AI Analysis
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {isLoadingNode ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                      <span className="ml-3 text-muted-foreground">Generating AI analysis...</span>
+                    </div>
+                  ) : nodeAnalysis ? (
+                    <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                      <h4 className="font-semibold mb-3 flex items-center gap-2">
+                        <Brain className="w-4 h-4 text-primary" />
+                        AI Analysis & ICD-10 Codes
+                      </h4>
+                      <div className="prose prose-sm max-w-none dark:prose-invert">
+                        <div className="whitespace-pre-wrap text-sm">{nodeAnalysis}</div>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <Separator />
+                  <div>
+                    <h4 className="font-semibold mb-2">Entity Information</h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Type:</span>
+                        <p className="font-medium capitalize">{selectedNode.type}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">ID:</span>
+                        <p className="font-medium">{selectedNode.id}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {selectedNode.data && Object.keys(selectedNode.data).length > 0 && (
+                    <div>
+                      <h4 className="font-semibold mb-2">Additional Data</h4>
+                      <div className="space-y-2">
+                        {Object.entries(selectedNode.data).map(([key, value]) => (
+                          <div key={key} className="flex justify-between text-sm">
+                            <span className="text-muted-foreground capitalize">{key}:</span>
+                            <span className="font-medium">{String(value)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <h4 className="font-semibold mb-2">Connections</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Connected to {selectedNode.connections?.length || 0} other entities
+                    </p>
+                    {selectedNode.connections && selectedNode.connections.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {selectedNode.connections.map((connId: string) => (
+                          <Badge key={connId} variant="outline" className="text-xs">
+                            {connId}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         );
 
