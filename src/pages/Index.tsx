@@ -3,7 +3,7 @@ import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { FileUpload } from '@/components/ui/file-upload';
 import { KnowledgeGraph } from '@/components/ui/knowledge-graph';
 import { AIInsights } from '@/components/ui/ai-insights';
-import { Brain, Upload, Zap, TrendingUp, Loader2, Activity } from 'lucide-react';
+import { Brain, Upload, Zap, TrendingUp, Loader2, Activity, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +21,21 @@ const Index = () => {
 
   const handleNodeClick = (node: any) => {
     setSelectedNode(node);
+  };
+
+  const handleDeleteFile = (fileId: string) => {
+    setUploadedFiles(prev => prev.filter(f => f.id !== fileId));
+    toast({
+      title: 'File deleted',
+      description: 'The uploaded file has been removed',
+    });
+  };
+
+  const extractICD10Codes = (analysisText: string): string[] => {
+    if (!analysisText) return [];
+    const icdPattern = /\b[A-Z]\d{2}(?:\.\d{1,2})?\b/g;
+    const matches = analysisText.match(icdPattern) || [];
+    return [...new Set(matches)]; // Remove duplicates
   };
 
   // Analyze selected node when it changes
@@ -152,13 +167,23 @@ const Index = () => {
                   <div className="space-y-2">
                     {uploadedFiles.map((file: any) => (
                       <div key={file.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                        <div>
+                        <div className="flex-1">
                           <p className="font-medium">{file.name}</p>
                           <p className="text-sm text-muted-foreground">
                             {(file.size / 1024).toFixed(2)} KB
                           </p>
                         </div>
-                        <Badge variant="outline">Processed</Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline">Processed</Badge>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteFile(file.id)}
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -209,6 +234,34 @@ const Index = () => {
               nodes={graphData?.nodes}
               edges={graphData?.edges}
             />
+
+            {/* ICD-10 Codes Section */}
+            {selectedNode && nodeAnalysis && !isLoadingNode && (
+              <Card className="glass border-border/50 bg-gradient-to-r from-primary/10 to-secondary/10">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Brain className="w-5 h-5 text-primary" />
+                    ICD-10 Codes
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    {extractICD10Codes(nodeAnalysis).length > 0 ? (
+                      extractICD10Codes(nodeAnalysis).map((code, idx) => (
+                        <Badge 
+                          key={idx} 
+                          className="px-3 py-1 text-sm font-mono bg-primary text-primary-foreground hover:bg-primary/90"
+                        >
+                          {code}
+                        </Badge>
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No ICD-10 codes identified in this analysis</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Node Analysis Section */}
             {selectedNode && (
