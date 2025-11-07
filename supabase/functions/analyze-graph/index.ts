@@ -71,19 +71,34 @@ ${edges.map((e: any) => {
 
 ${graphSummary}
 
-Provide a comprehensive clinical analysis including:
+Provide a comprehensive clinical analysis with actionable suggestions in the following format:
 
-1. **Patient Overview**: Summarize the patient(s) and their key characteristics
-2. **Diagnosis Summary**: List all conditions with their ICD-10 codes (CRITICAL: provide accurate ICD-10 codes for each condition)
-3. **Treatment Analysis**: Evaluate current medications and procedures
-4. **Risk Assessment**: Identify comorbidities and potential complications
-5. **Clinical Recommendations**: Suggest additional tests, treatments, or monitoring
-6. **ICD-10 Code Summary**: List all applicable ICD-10 codes in a clear format
+## 📋 PATIENT SUMMARY
+Brief overview of the patient(s) including age, gender, and primary health status
 
-Format the ICD-10 codes as:
-- Condition Name: ICD-10 Code (X00.X) - Description
+## 🏥 DIAGNOSIS SUMMARY
+List all identified conditions with accurate ICD-10 codes:
+- Condition Name: ICD-10 Code (X00.X) - Brief description
 
-Be thorough, evidence-based, and ensure all ICD-10 codes are accurate and up-to-date.`;
+## 💊 CURRENT TREATMENT ANALYSIS
+Evaluate medications, procedures, and current treatment plan effectiveness
+
+## ⚠️ RISK ASSESSMENT
+Identify comorbidities, drug interactions, and potential complications
+
+## 💡 CLINICAL SUGGESTIONS & RECOMMENDATIONS
+Provide 3-5 specific, actionable recommendations:
+1. Additional diagnostic tests needed
+2. Treatment optimizations or medication adjustments
+3. Lifestyle interventions
+4. Monitoring requirements
+5. Specialist referrals if needed
+
+## 📊 ICD-10 CODE SUMMARY
+List all applicable ICD-10 codes in format:
+Code: X00.X - Condition Description
+
+Be thorough, evidence-based, and ensure all ICD-10 codes are accurate and up-to-date. Focus on actionable insights and clear recommendations.`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',

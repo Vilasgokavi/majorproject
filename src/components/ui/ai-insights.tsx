@@ -81,6 +81,13 @@ export const AIInsights: React.FC<AIInsightsProps> = ({
     }
   }, [selectedNode]);
 
+  // Auto-analyze graph when data is available
+  useEffect(() => {
+    if (graphData && graphData.nodes.length > 0 && !graphAnalysis && !isLoadingGraph) {
+      analyzeFullGraph();
+    }
+  }, [graphData]);
+
   const analyzeNode = async () => {
     if (!selectedNode || !graphData) return;
     
@@ -218,20 +225,21 @@ export const AIInsights: React.FC<AIInsightsProps> = ({
       {/* Content */}
       {activeTab === 'overview' && (
         <div className="space-y-4">
-          {/* Full Graph Analysis Button */}
+          {/* Full Graph Analysis */}
           <Card className="glass border-border/50">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h4 className="font-semibold mb-1">Complete Graph Analysis</h4>
+                  <h4 className="font-semibold mb-1 text-lg">Knowledge Graph Summary & Suggestions</h4>
                   <p className="text-sm text-muted-foreground">
-                    Get comprehensive AI analysis with ICD-10 codes
+                    Comprehensive AI analysis with clinical recommendations
                   </p>
                 </div>
                 <Button 
                   onClick={analyzeFullGraph} 
                   disabled={isLoadingGraph || !graphData}
-                  variant="medical"
+                  variant="outline"
+                  size="sm"
                 >
                   {isLoadingGraph ? (
                     <>
@@ -241,62 +249,30 @@ export const AIInsights: React.FC<AIInsightsProps> = ({
                   ) : (
                     <>
                       <Brain className="w-4 h-4" />
-                      Analyze Graph
+                      Refresh Analysis
                     </>
                   )}
                 </Button>
               </div>
               
-              {graphAnalysis && (
-                <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+              {isLoadingGraph ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  <span className="ml-3 text-muted-foreground">Generating comprehensive analysis...</span>
+                </div>
+              ) : graphAnalysis ? (
+                <div className="mt-4 p-6 bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20 rounded-lg">
                   <div className="prose prose-sm max-w-none dark:prose-invert">
-                    <div className="whitespace-pre-wrap text-sm">{graphAnalysis}</div>
+                    <div className="whitespace-pre-wrap text-sm leading-relaxed">{graphAnalysis}</div>
                   </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center py-8 text-muted-foreground">
+                  <p className="text-sm">Upload medical data to generate AI insights</p>
                 </div>
               )}
             </CardContent>
           </Card>
-
-          {insights.map((insight) => (
-            <Card key={insight.id} className="glass border-border/50">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    {getInsightIcon(insight.type)}
-                    {insight.title}
-                  </CardTitle>
-                  <div className="flex items-center gap-2">
-                    <Badge className={getPriorityColor(insight.priority)}>
-                      {insight.priority}
-                    </Badge>
-                    <span className={`text-sm font-medium ${getConfidenceColor(insight.confidence)}`}>
-                      {Math.round(insight.confidence * 100)}%
-                    </span>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  {insight.content}
-                </p>
-                {insight.relatedNodes && insight.relatedNodes.length > 0 && (
-                  <>
-                    <Separator className="my-3" />
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">Related nodes:</span>
-                      <div className="flex gap-1">
-                        {insight.relatedNodes.map((nodeId) => (
-                          <Badge key={nodeId} variant="outline" className="text-xs">
-                            Node {nodeId}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          ))}
         </div>
       )}
 
