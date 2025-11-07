@@ -46,14 +46,26 @@ const getNodeSize = (node: GraphNode, allNodes: GraphNode[]) => {
   return 30;
 };
 
-// Apply circular layout algorithm
+// Apply circular layout algorithm with disease/condition at center
 const applyCircularLayout = (nodes: GraphNode[], centerX: number = 400, centerY: number = 300): GraphNode[] => {
   if (nodes.length === 0) return nodes;
   
-  // Find the central node (most connections)
-  const centralNode = nodes.reduce((prev, current) => 
-    current.connections.length > prev.connections.length ? current : prev
-  );
+  // Find condition/disease nodes
+  const conditionNodes = nodes.filter(n => n.type === 'condition');
+  
+  // Select central node: prioritize condition nodes, then most connected
+  let centralNode: GraphNode;
+  if (conditionNodes.length > 0) {
+    // If multiple conditions, pick the one with most connections
+    centralNode = conditionNodes.reduce((prev, current) => 
+      current.connections.length > prev.connections.length ? current : prev
+    );
+  } else {
+    // Fallback to most connected node if no conditions exist
+    centralNode = nodes.reduce((prev, current) => 
+      current.connections.length > prev.connections.length ? current : prev
+    );
+  }
   
   // Separate central node from peripheral nodes
   const peripheralNodes = nodes.filter(n => n.id !== centralNode.id);
