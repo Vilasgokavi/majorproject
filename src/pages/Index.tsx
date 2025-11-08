@@ -264,6 +264,28 @@ const Index = () => {
         );
 
       case 'graph':
+        if (!uploadedFiles.length && !graphData) {
+          return (
+            <div className="space-y-6">
+              <Card className="glass border-border/50">
+                <CardContent className="pt-6 py-12 text-center">
+                  <div className="inline-flex items-center justify-center p-3 rounded-full bg-muted mb-4">
+                    <Upload className="w-8 h-8 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">No Data Available</h3>
+                  <p className="text-muted-foreground mb-6">
+                    Upload medical files to generate and visualize a knowledge graph
+                  </p>
+                  <Button onClick={() => setActiveSection('upload')} variant="hero">
+                    <Upload className="w-4 h-4" />
+                    Go to Upload
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          );
+        }
+
         return (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
