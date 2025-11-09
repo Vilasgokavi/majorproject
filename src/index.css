@@ -6,49 +6,51 @@
 
 @layer base {
   :root {
-    /* Healthcare Color Palette */
-    --healthcare-blue: 213 94% 68%;
-    --healthcare-green: 159 84% 57%;
-    --healthcare-mint: 166 73% 89%;
-    --healthcare-navy: 217 91% 24%;
-    --healthcare-light: 210 40% 98%;
+    /* Fluorescent/Radium Color Palette - Dark Theme */
+    --neon-cyan: 180 100% 50%;
+    --neon-magenta: 320 100% 50%;
+    --neon-lime: 90 100% 50%;
+    --neon-pink: 330 100% 60%;
+    --neon-purple: 270 100% 60%;
+    --neon-blue: 210 100% 60%;
+    --neon-orange: 30 100% 55%;
     
-    /* Background System */
-    --background: var(--healthcare-light);
-    --background-glass: 210 40% 98% / 0.8;
-    --background-gradient: linear-gradient(135deg, hsl(213 94% 68% / 0.1), hsl(159 84% 57% / 0.1));
-    --foreground: var(--healthcare-navy);
+    /* Dark Background System */
+    --background: 240 10% 8%;
+    --background-glass: 240 10% 12% / 0.85;
+    --background-gradient: linear-gradient(135deg, hsl(240 10% 8%), hsl(270 20% 12%));
+    --foreground: 0 0% 95%;
 
     /* Card System with Glassmorphism */
-    --card: 210 40% 98% / 0.9;
-    --card-glass: 210 40% 98% / 0.7;
-    --card-foreground: var(--healthcare-navy);
-    --card-border: 210 40% 90% / 0.3;
+    --card: 240 10% 12% / 0.9;
+    --card-glass: 240 10% 15% / 0.75;
+    --card-foreground: 0 0% 95%;
+    --card-border: 180 100% 50% / 0.3;
 
-    /* Interactive Elements */
-    --primary: var(--healthcare-blue);
-    --primary-foreground: 0 0% 100%;
-    --primary-glow: var(--healthcare-blue) / 0.2;
+    /* Interactive Elements - Fluorescent */
+    --primary: var(--neon-cyan);
+    --primary-foreground: 240 10% 8%;
+    --primary-glow: var(--neon-cyan) / 0.5;
 
-    --secondary: var(--healthcare-green);
-    --secondary-foreground: 0 0% 100%;
-    --secondary-glow: var(--healthcare-green) / 0.2;
+    --secondary: var(--neon-magenta);
+    --secondary-foreground: 240 10% 8%;
+    --secondary-glow: var(--neon-magenta) / 0.5;
 
     /* Status & Feedback */
-    --accent: var(--healthcare-mint);
-    --accent-foreground: var(--healthcare-navy);
+    --accent: var(--neon-lime);
+    --accent-foreground: 240 10% 8%;
     
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 240 10% 18%;
+    --muted-foreground: 240 5% 65%;
 
-    --destructive: 0 84% 60%;
+    --destructive: var(--neon-pink);
     --destructive-foreground: 0 0% 100%;
 
     /* Form Elements */
-    --border: 210 40% 88% / 0.6;
-    --input: 210 40% 98% / 0.9;
-    --input-border: 210 40% 85%;
-    --ring: var(--healthcare-blue);
+    --border: 180 100% 50% / 0.2;
+    --input: 240 10% 15% / 0.9;
+    --input-border: 180 100% 50% / 0.4;
+    --ring: var(--neon-cyan);
 
     /* Layout */
     --radius: 1rem;
@@ -56,68 +58,22 @@
     --radius-lg: 1.5rem;
 
     /* Glassmorphism Effects */
-    --glass-backdrop: blur(16px);
-    --glass-border: 210 40% 90% / 0.2;
-    --glass-shadow: 0 8px 32px hsl(213 94% 68% / 0.1);
+    --glass-backdrop: blur(20px);
+    --glass-border: 180 100% 50% / 0.3;
+    --glass-shadow: 0 8px 32px hsl(180 100% 50% / 0.3), 0 0 60px hsl(320 100% 50% / 0.2);
 
     /* Animations */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-bounce: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-
-  .dark {
-    /* Dark Mode Healthcare Theme */
-    --background: 217 91% 8%;
-    --background-glass: 217 91% 12% / 0.8;
-    --background-gradient: linear-gradient(135deg, hsl(213 94% 68% / 0.15), hsl(159 84% 57% / 0.1));
-    --foreground: var(--healthcare-light);
-
-    --card: 217 91% 12% / 0.9;
-    --card-glass: 217 91% 15% / 0.7;
-    --card-foreground: var(--healthcare-light);
-    --card-border: 217 40% 25% / 0.3;
-
-    --primary: var(--healthcare-blue);
-    --primary-foreground: 0 0% 100%;
-    --primary-glow: var(--healthcare-blue) / 0.3;
-
-    --secondary: var(--healthcare-green);
-    --secondary-foreground: 0 0% 100%;
-    --secondary-glow: var(--healthcare-green) / 0.3;
-
-    --accent: var(--healthcare-mint);
-    --accent-foreground: var(--healthcare-navy);
-    
-    --muted: 217 91% 15%;
-    --muted-foreground: 215 20% 70%;
-
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 217 40% 25% / 0.6;
-    --input: 217 91% 15% / 0.9;
-    --input-border: 217 40% 30%;
-    --ring: var(--healthcare-blue);
-
-    --glass-backdrop: blur(20px);
-    --glass-border: 217 40% 30% / 0.3;
-    --glass-shadow: 0 8px 32px hsl(217 91% 8% / 0.3);
+    --sidebar-background: 240 10% 10%;
+    --sidebar-foreground: 0 0% 90%;
+    --sidebar-primary: var(--neon-cyan);
+    --sidebar-primary-foreground: 240 10% 8%;
+    --sidebar-accent: 240 10% 18%;
+    --sidebar-accent-foreground: var(--neon-cyan);
+    --sidebar-border: 180 100% 50% / 0.2;
+    --sidebar-ring: var(--neon-cyan);
   }
 }
 
@@ -128,7 +84,8 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    background: var(--background-gradient);
+    background: linear-gradient(135deg, hsl(240 10% 8%), hsl(270 20% 12%));
+    background-attachment: fixed;
     min-height: 100vh;
   }
 
@@ -144,10 +101,16 @@
     @apply glass rounded-[var(--radius-lg)] p-6;
   }
 
-  /* Healthcare specific animations */
+  /* Neon glow animations */
   @keyframes pulse-glow {
-    0%, 100% { box-shadow: 0 0 20px hsl(var(--primary-glow)); }
-    50% { box-shadow: 0 0 40px hsl(var(--primary-glow)), 0 0 60px hsl(var(--primary-glow)); }
+    0%, 100% { 
+      box-shadow: 0 0 20px hsl(var(--primary-glow)), 0 0 40px hsl(var(--secondary-glow));
+      filter: brightness(1);
+    }
+    50% { 
+      box-shadow: 0 0 40px hsl(var(--primary-glow)), 0 0 80px hsl(var(--primary-glow)), 0 0 60px hsl(var(--secondary-glow));
+      filter: brightness(1.2);
+    }
   }
 
   @keyframes float {

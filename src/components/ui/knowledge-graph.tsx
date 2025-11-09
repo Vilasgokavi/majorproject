@@ -26,16 +26,17 @@ interface KnowledgeGraphProps {
   edges?: GraphEdge[];
   onNodeClick?: (node: GraphNode) => void;
   onNodeHover?: (node: GraphNode | null) => void;
+  patientId?: string;
 }
 
 const getNodeColor = (type: string) => {
   switch (type) {
-    case 'patient': return '#4A90E2'; // Blue for main entity
-    case 'condition': return '#4A90E2'; // Blue for conditions
-    case 'medication': return '#F5A623'; // Orange for treatments/medications
-    case 'procedure': return '#7ED6DF'; // Light blue for tests/procedures
-    case 'symptom': return '#7DB87E'; // Green for symptoms
-    default: return '#B794F6'; // Purple for related/other
+    case 'patient': return 'hsl(180 100% 50%)'; // Neon cyan
+    case 'condition': return 'hsl(320 100% 50%)'; // Neon magenta
+    case 'medication': return 'hsl(30 100% 55%)'; // Neon orange
+    case 'procedure': return 'hsl(210 100% 60%)'; // Neon blue
+    case 'symptom': return 'hsl(90 100% 50%)'; // Neon lime
+    default: return 'hsl(270 100% 60%)'; // Neon purple
   }
 };
 
@@ -201,6 +202,7 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
   edges,
   onNodeClick,
   onNodeHover,
+  patientId,
 }) => {
   // Use provided data or fallback to sample data
   const rawNodes = nodes && nodes.length > 0 ? nodes : sampleNodes;
@@ -249,6 +251,17 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
 
   return (
     <div className="glass-card h-[600px] relative overflow-hidden bg-background">
+      {/* Patient ID Header */}
+      {patientId && (
+        <div className="absolute top-4 left-4 z-10">
+          <div className="bg-background/90 backdrop-blur-sm border border-neon-cyan/40 rounded-lg px-4 py-2">
+            <h3 className="text-sm font-semibold text-neon-cyan" style={{ textShadow: '0 0 10px hsl(var(--neon-cyan))' }}>
+              Knowledge Graph of PID: {patientId}
+            </h3>
+          </div>
+        </div>
+      )}
+      
       {/* Minimal Controls */}
       <div className="absolute top-4 right-4 z-10 flex gap-2">
         <Button variant="outline" size="sm" onClick={handleZoomIn} className="bg-background/80 backdrop-blur-sm">
@@ -303,10 +316,13 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                   y1={startY}
                   x2={endX}
                   y2={endY}
-                  stroke="#D1D5DB"
-                  strokeWidth={1.5}
-                  opacity={0.6}
+                  stroke="hsl(var(--neon-cyan))"
+                  strokeWidth={2}
+                  opacity={0.4}
                   className="transition-all duration-300"
+                  style={{
+                    filter: 'drop-shadow(0 0 4px hsl(var(--neon-cyan)))'
+                  }}
                 />
                 {edge.label && (
                   <text
@@ -314,8 +330,12 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                     y={labelY - 8}
                     textAnchor="middle"
                     className="text-[10px] select-none"
-                    fill="#9CA3AF"
-                    style={{ pointerEvents: 'none', fontWeight: 400 }}
+                    fill="hsl(var(--neon-cyan))"
+                    style={{ 
+                      pointerEvents: 'none', 
+                      fontWeight: 500,
+                      textShadow: '0 0 8px hsl(var(--neon-cyan))'
+                    }}
                   >
                     {edge.label}
                   </text>
@@ -345,16 +365,18 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                   onNodeHover?.(null);
                 }}
               >
-                {/* Main node circle - solid color */}
+                {/* Main node circle - neon glow */}
                 <circle
                   cx={node.x}
                   cy={node.y}
                   r={nodeRadius}
                   fill={getNodeColor(node.type)}
-                  opacity={0.9}
+                  opacity={0.8}
                   className="transition-all duration-200"
                   style={{
-                    filter: isHovered ? 'drop-shadow(0 4px 12px rgba(0,0,0,0.2))' : 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
+                    filter: isHovered 
+                      ? `drop-shadow(0 0 20px ${getNodeColor(node.type)}) drop-shadow(0 0 40px ${getNodeColor(node.type)})` 
+                      : `drop-shadow(0 0 10px ${getNodeColor(node.type)})`
                   }}
                 />
                 
@@ -366,9 +388,10 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                   className="select-none"
                   style={{ 
                     pointerEvents: 'none',
-                    fontSize: '13px',
-                    fontWeight: 500,
-                    fill: '#374151'
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    fill: 'hsl(var(--foreground))',
+                    textShadow: `0 0 8px ${getNodeColor(node.type)}`
                   }}
                 >
                   {node.label}
@@ -383,8 +406,9 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                   style={{ 
                     pointerEvents: 'none',
                     fontSize: '11px',
-                    fontWeight: 400,
-                    fill: '#9CA3AF'
+                    fontWeight: 500,
+                    fill: getNodeColor(node.type),
+                    textShadow: `0 0 6px ${getNodeColor(node.type)}`
                   }}
                 >
                   {node.type}

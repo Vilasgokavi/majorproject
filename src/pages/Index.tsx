@@ -328,6 +328,7 @@ const Index = () => {
               onNodeClick={handleNodeClick}
               nodes={graphData?.nodes}
               edges={graphData?.edges}
+              patientId={patientInfo?.pid}
             />
 
             {/* ICD-10 Codes Section */}

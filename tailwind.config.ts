@@ -20,12 +20,14 @@ export default {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         
-        // Healthcare color system
-        "healthcare-blue": "hsl(var(--healthcare-blue))",
-        "healthcare-green": "hsl(var(--healthcare-green))",
-        "healthcare-mint": "hsl(var(--healthcare-mint))",
-        "healthcare-navy": "hsl(var(--healthcare-navy))",
-        "healthcare-light": "hsl(var(--healthcare-light))",
+        // Neon/Fluorescent color system
+        "neon-cyan": "hsl(var(--neon-cyan))",
+        "neon-magenta": "hsl(var(--neon-magenta))",
+        "neon-lime": "hsl(var(--neon-lime))",
+        "neon-pink": "hsl(var(--neon-pink))",
+        "neon-purple": "hsl(var(--neon-purple))",
+        "neon-blue": "hsl(var(--neon-blue))",
+        "neon-orange": "hsl(var(--neon-orange))",
         
         primary: {
           DEFAULT: "hsl(var(--primary))",
