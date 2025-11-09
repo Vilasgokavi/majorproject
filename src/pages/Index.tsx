@@ -3,6 +3,7 @@ import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { FileUpload } from '@/components/ui/file-upload';
 import { KnowledgeGraph } from '@/components/ui/knowledge-graph';
 import { AIInsights } from '@/components/ui/ai-insights';
+import { PatientInfoForm } from '@/components/ui/patient-info-form';
 import { Brain, Upload, Zap, TrendingUp, Loader2, Activity, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,6 +20,7 @@ const Index = () => {
   const [isLoadingNode, setIsLoadingNode] = useState(false);
   const [graphAnalysis, setGraphAnalysis] = useState<string>('');
   const [isLoadingGraph, setIsLoadingGraph] = useState(false);
+  const [patientInfo, setPatientInfo] = useState<{ name: string; age: string; pid: string } | null>(null);
   const { toast } = useToast();
 
   const handleNodeClick = (node: any) => {
@@ -246,20 +248,36 @@ const Index = () => {
               </Card>
             )}
 
+            {/* Patient Info Form */}
+            {!patientInfo && (
+              <PatientInfoForm
+                onSubmit={(info) => {
+                  setPatientInfo(info);
+                  toast({
+                    title: 'Patient registered',
+                    description: `PID: ${info.pid} - ${info.name}, ${info.age} years old`,
+                  });
+                }}
+              />
+            )}
+
             {/* File Upload Section */}
-            <FileUpload
-              onFilesUploaded={(files) => {
-                setUploadedFiles(files);
-              }}
-              onFileRemoved={(fileId) => {
-                setUploadedFiles(prev => prev.filter(f => f.id !== fileId));
-              }}
-              onKnowledgeGraphGenerated={(data) => {
-                setGraphData(data);
-                // Auto-switch to graph view after extraction
-                setTimeout(() => setActiveSection('graph'), 1500);
-              }}
-            />
+            {patientInfo && (
+              <FileUpload
+                patientInfo={patientInfo}
+                onFilesUploaded={(files) => {
+                  setUploadedFiles(files);
+                }}
+                onFileRemoved={(fileId) => {
+                  setUploadedFiles(prev => prev.filter(f => f.id !== fileId));
+                }}
+                onKnowledgeGraphGenerated={(data) => {
+                  setGraphData(data);
+                  // Auto-switch to graph view after extraction
+                  setTimeout(() => setActiveSection('graph'), 1500);
+                }}
+              />
+            )}
           </div>
         );
 

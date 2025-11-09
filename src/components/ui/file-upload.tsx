@@ -13,16 +13,24 @@ interface UploadedFile {
   file: File;
 }
 
+interface PatientInfo {
+  name: string;
+  age: string;
+  pid: string;
+}
+
 interface FileUploadProps {
   onFilesUploaded?: (files: UploadedFile[]) => void;
   onFileRemoved?: (fileId: string) => void;
   onKnowledgeGraphGenerated?: (graphData: any) => void;
+  patientInfo: PatientInfo | null;
 }
 
 export const FileUpload: React.FC<FileUploadProps> = ({
   onFilesUploaded,
   onFileRemoved,
   onKnowledgeGraphGenerated,
+  patientInfo,
 }) => {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
@@ -158,8 +166,41 @@ export const FileUpload: React.FC<FileUploadProps> = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  // Don't allow file upload if patient info is not provided
+  if (!patientInfo) {
+    return (
+      <div className="glass-card text-center py-12">
+        <div className="inline-flex items-center justify-center p-3 rounded-full bg-muted mb-4">
+          <Upload className="w-8 h-8 text-muted-foreground" />
+        </div>
+        <h3 className="text-lg font-semibold mb-2">Patient Information Required</h3>
+        <p className="text-muted-foreground">
+          Please provide patient information before uploading files
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
+      {/* Patient Info Display */}
+      <div className="glass-card p-4 bg-primary/5 border-primary/20">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-muted-foreground">Patient ID</p>
+            <p className="font-mono font-bold text-lg text-primary">{patientInfo.pid}</p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Name</p>
+            <p className="font-semibold">{patientInfo.name}</p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Age</p>
+            <p className="font-semibold">{patientInfo.age} years</p>
+          </div>
+        </div>
+      </div>
+
       {/* Upload Area */}
       <div
         {...getRootProps()}
