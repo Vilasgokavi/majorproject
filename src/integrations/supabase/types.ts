@@ -14,7 +14,68 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      patient_files: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id: string
+          patient_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id?: string
+          patient_id: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          file_type?: string
+          id?: string
+          patient_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_files_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patients: {
+        Row: {
+          age: string
+          created_at: string
+          id: string
+          name: string
+          pid: string
+        }
+        Insert: {
+          age: string
+          created_at?: string
+          id?: string
+          name: string
+          pid: string
+        }
+        Update: {
+          age?: string
+          created_at?: string
+          id?: string
+          name?: string
+          pid?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

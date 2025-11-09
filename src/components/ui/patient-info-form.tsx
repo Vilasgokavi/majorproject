@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface PatientInfo {
   name: string;
@@ -18,6 +20,8 @@ interface PatientInfoFormProps {
 export const PatientInfoForm: React.FC<PatientInfoFormProps> = ({ onSubmit }) => {
   const [name, setName] = useState('');
   const [age, setAge] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
 
   const generatePID = (name: string, age: string): string => {
     // Generate PID: First 3 letters of name (uppercase) + Age + Random 4-digit number
@@ -27,15 +31,46 @@ export const PatientInfoForm: React.FC<PatientInfoFormProps> = ({ onSubmit }) =>
     return `${namePrefix}${ageStr}${randomNum}`;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!name.trim() || !age.trim()) {
       return;
     }
 
+    setIsSubmitting(true);
     const pid = generatePID(name, age);
-    onSubmit({ name: name.trim(), age: age.trim(), pid });
+
+    try {
+      // Save patient to database
+      const { data, error } = await supabase
+        .from('patients')
+        .insert({
+          name: name.trim(),
+          age: age.trim(),
+          pid,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast({
+        title: "Patient registered",
+        description: `Patient ID: ${pid}`,
+      });
+
+      onSubmit({ name: name.trim(), age: age.trim(), pid });
+    } catch (error) {
+      console.error('Error saving patient:', error);
+      toast({
+        title: "Error",
+        description: "Failed to register patient. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const isFormValid = name.trim().length > 0 && age.trim().length > 0 && !isNaN(Number(age));
@@ -88,9 +123,9 @@ export const PatientInfoForm: React.FC<PatientInfoFormProps> = ({ onSubmit }) =>
             type="submit" 
             className="w-full" 
             variant="hero"
-            disabled={!isFormValid}
+            disabled={!isFormValid || isSubmitting}
           >
-            Generate PID & Continue
+            {isSubmitting ? 'Registering...' : 'Generate PID & Continue'}
           </Button>
         </form>
       </CardContent>

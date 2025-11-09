@@ -4,6 +4,7 @@ import { Upload, X, FileText, Image, FileSpreadsheet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UploadedFile {
   id: string;
@@ -95,6 +96,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   };
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    if (!patientInfo) return;
+
     const newFiles: UploadedFile[] = acceptedFiles.map(file => ({
       id: Math.random().toString(36).substr(2, 9),
       name: file.name,
@@ -103,21 +106,56 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       file,
     }));
 
-    // Simulate upload progress
-    newFiles.forEach(file => {
-      setUploadProgress(prev => ({ ...prev, [file.id]: 0 }));
+    // Upload files to storage and save metadata
+    for (const fileData of newFiles) {
+      setUploadProgress(prev => ({ ...prev, [fileData.id]: 0 }));
       
-      const interval = setInterval(() => {
-        setUploadProgress(prev => {
-          const currentProgress = prev[file.id] || 0;
-          if (currentProgress >= 100) {
-            clearInterval(interval);
-            return prev;
-          }
-          return { ...prev, [file.id]: currentProgress + 10 };
+      try {
+        // Find patient in database
+        const { data: patient, error: patientError } = await supabase
+          .from('patients')
+          .select('id')
+          .eq('pid', patientInfo.pid)
+          .single();
+
+        if (patientError) throw patientError;
+
+        // Upload file to storage
+        const filePath = `${patientInfo.pid}/${fileData.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from('patient-files')
+          .upload(filePath, fileData.file, {
+            cacheControl: '3600',
+            upsert: false,
+          });
+
+        if (uploadError) throw uploadError;
+
+        // Save file metadata to database
+        const { error: metadataError } = await supabase
+          .from('patient_files')
+          .insert({
+            patient_id: patient.id,
+            file_name: fileData.name,
+            file_size: fileData.size,
+            file_type: fileData.type,
+            file_path: filePath,
+          });
+
+        if (metadataError) throw metadataError;
+
+        // Update progress to 100%
+        setUploadProgress(prev => ({ ...prev, [fileData.id]: 100 }));
+      } catch (error) {
+        console.error('Error uploading file:', error);
+        toast({
+          title: "Upload failed",
+          description: `Failed to upload ${fileData.name}`,
+          variant: "destructive",
         });
-      }, 100);
-    });
+        continue;
+      }
+    }
 
     setUploadedFiles(prev => [...prev, ...newFiles]);
     onFilesUploaded?.(newFiles);
@@ -131,7 +169,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
     if (newFiles.length > 0) {
       setTimeout(() => processWithAI(newFiles[0]), 1200);
     }
-  }, [onFilesUploaded, toast, onKnowledgeGraphGenerated]);
+  }, [onFilesUploaded, toast, onKnowledgeGraphGenerated, patientInfo]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
