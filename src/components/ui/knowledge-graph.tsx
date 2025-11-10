@@ -212,6 +212,7 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
   const displayNodes = applyCircularLayout(rawNodes);
   
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
+  const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [zoom, setZoom] = useState(1);
@@ -309,6 +310,11 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
             const labelX = (startX + endX) / 2;
             const labelY = (startY + endY) / 2;
 
+            // Check if edge is connected to selected node
+            const isConnectedToSelected = selectedNode && (edge.source === selectedNode || edge.target === selectedNode);
+            const edgeOpacity = selectedNode ? (isConnectedToSelected ? 0.8 : 0.15) : 0.4;
+            const edgeGlow = isConnectedToSelected;
+
             return (
               <g key={index}>
                 <line
@@ -317,11 +323,11 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                   x2={endX}
                   y2={endY}
                   stroke="hsl(var(--neon-cyan))"
-                  strokeWidth={2}
-                  opacity={0.4}
+                  strokeWidth={isConnectedToSelected ? 3 : 2}
+                  opacity={edgeOpacity}
                   className="transition-all duration-300"
                   style={{
-                    filter: 'drop-shadow(0 0 4px hsl(var(--neon-cyan)))'
+                    filter: edgeGlow ? 'drop-shadow(0 0 8px hsl(var(--neon-cyan))) drop-shadow(0 0 16px hsl(var(--neon-cyan)))' : 'none'
                   }}
                 />
                 {edge.label && (
@@ -331,10 +337,11 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                     textAnchor="middle"
                     className="text-[10px] select-none"
                     fill="hsl(var(--neon-cyan))"
+                    opacity={edgeOpacity}
                     style={{ 
                       pointerEvents: 'none', 
                       fontWeight: 500,
-                      textShadow: '0 0 8px hsl(var(--neon-cyan))'
+                      textShadow: edgeGlow ? '0 0 12px hsl(var(--neon-cyan))' : 'none'
                     }}
                   >
                     {edge.label}
@@ -348,14 +355,22 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
           {filteredNodes.map((node) => {
             if (!node.x || !node.y) return null;
             const isHovered = hoveredNode === node.id;
+            const isSelected = selectedNode === node.id;
             const baseRadius = getNodeSize(node, displayNodes);
             const nodeRadius = isHovered ? baseRadius * 1.1 : baseRadius;
+            
+            // Dim nodes when something is selected and this isn't it
+            const nodeOpacity = selectedNode ? (isSelected ? 1 : 0.25) : 0.8;
+            const labelOpacity = selectedNode ? (isSelected ? 1 : 0.4) : 1;
 
             return (
               <g
                 key={node.id}
                 className="cursor-pointer"
-                onClick={() => onNodeClick?.(node)}
+                onClick={() => {
+                  setSelectedNode(isSelected ? null : node.id);
+                  onNodeClick?.(node);
+                }}
                 onMouseEnter={() => {
                   setHoveredNode(node.id);
                   onNodeHover?.(node);
@@ -371,10 +386,12 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                   cy={node.y}
                   r={nodeRadius}
                   fill={getNodeColor(node.type)}
-                  opacity={0.8}
-                  className="transition-all duration-200"
+                  opacity={nodeOpacity}
+                  className="transition-all duration-300"
                   style={{
-                    filter: isHovered 
+                    filter: isSelected 
+                      ? `drop-shadow(0 0 30px ${getNodeColor(node.type)}) drop-shadow(0 0 60px ${getNodeColor(node.type)})` 
+                      : isHovered 
                       ? `drop-shadow(0 0 20px ${getNodeColor(node.type)}) drop-shadow(0 0 40px ${getNodeColor(node.type)})` 
                       : `drop-shadow(0 0 10px ${getNodeColor(node.type)})`
                   }}
@@ -385,13 +402,14 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                   x={node.x}
                   y={node.y + nodeRadius + 18}
                   textAnchor="middle"
-                  className="select-none"
+                  className="select-none transition-all duration-300"
                   style={{ 
                     pointerEvents: 'none',
                     fontSize: '14px',
                     fontWeight: 600,
                     fill: 'hsl(var(--foreground))',
-                    textShadow: `0 0 8px ${getNodeColor(node.type)}`
+                    opacity: labelOpacity,
+                    textShadow: isSelected ? `0 0 12px ${getNodeColor(node.type)}` : `0 0 8px ${getNodeColor(node.type)}`
                   }}
                 >
                   {node.label}
@@ -402,13 +420,14 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                   x={node.x}
                   y={node.y + nodeRadius + 32}
                   textAnchor="middle"
-                  className="select-none capitalize"
+                  className="select-none capitalize transition-all duration-300"
                   style={{ 
                     pointerEvents: 'none',
                     fontSize: '11px',
                     fontWeight: 500,
                     fill: getNodeColor(node.type),
-                    textShadow: `0 0 6px ${getNodeColor(node.type)}`
+                    opacity: labelOpacity,
+                    textShadow: isSelected ? `0 0 10px ${getNodeColor(node.type)}` : `0 0 6px ${getNodeColor(node.type)}`
                   }}
                 >
                   {node.type}
