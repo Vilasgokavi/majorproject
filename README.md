@@ -71,3 +71,14 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+
+## Environment variables
+
+Create a `.env` file in the project root with:
+
+```
+VITE_SUPABASE_URL=<your-supabase-project-url>
+VITE_SUPABASE_PUBLISHABLE_KEY=<your-supabase-anon-key>
+```
+
+Restart the dev server after changes. These are required for Supabase client and Edge Function calls.

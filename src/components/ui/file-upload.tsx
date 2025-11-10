@@ -54,6 +54,11 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         {
           method: 'POST',
           body: formData,
+          headers: {
+            // Required for calling Supabase Edge Functions from the browser
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
         }
       );
 
@@ -111,14 +116,30 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       setUploadProgress(prev => ({ ...prev, [fileData.id]: 0 }));
       
       try {
-        // Find patient in database
+        // Find or create patient in database
+        let patientId: string | null = null;
         const { data: patient, error: patientError } = await supabase
           .from('patients')
           .select('id')
           .eq('pid', patientInfo.pid)
           .single();
 
-        if (patientError) throw patientError;
+        if (patientError || !patient) {
+          const { data: inserted, error: insertError } = await supabase
+            .from('patients')
+            .insert({
+              pid: patientInfo.pid,
+              name: patientInfo.name,
+              age: patientInfo.age,
+            })
+            .select('id')
+            .single();
+
+          if (insertError) throw insertError;
+          patientId = inserted.id;
+        } else {
+          patientId = patient.id;
+        }
 
         // Upload file to storage
         const filePath = `${patientInfo.pid}/${fileData.name}`;
@@ -135,7 +156,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         const { error: metadataError } = await supabase
           .from('patient_files')
           .insert({
-            patient_id: patient.id,
+            patient_id: patientId as string,
             file_name: fileData.name,
             file_size: fileData.size,
             file_type: fileData.type,

@@ -68,7 +68,12 @@ const Index = () => {
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-graph`,
           {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              // Required for calling Supabase Edge Functions from the browser
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+              'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            },
             body: JSON.stringify({
               nodes: graphData.nodes,
               edges: graphData.edges,
@@ -111,7 +116,12 @@ const Index = () => {
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-node`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            // Required for calling Supabase Edge Functions from the browser
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
           body: JSON.stringify({
             node: selectedNode,
             allNodes: graphData.nodes,
