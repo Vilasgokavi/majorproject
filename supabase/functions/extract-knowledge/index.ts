@@ -110,7 +110,7 @@ serve(async (req) => {
         content: [
           {
             type: "text",
-            text: "You are a medical knowledge extraction AI. Extract entities (patients, conditions, medications, procedures, symptoms) and their relationships from this medical image.\n\nCRITICAL: Assign UNIQUE x,y coordinates to each node:\n- x: 100-700\n- y: 100-500\n- Space nodes apart, no overlaps\n- Group related items logically\n\nReturn JSON with 'nodes' (id, label, type, x, y, connections, data) and 'edges' (source, target, label, strength)."
+            text: "You are a medical knowledge extraction AI. Extract entities (patients, conditions, medications, procedures, symptoms) and their relationships from this medical image.\n\nIMPORTANT: Identify the main DISEASE or CONDITION first - this will be positioned at the center of the knowledge graph. Extract all related symptoms, medications, procedures, and patient information.\n\nReturn JSON with 'nodes' (id, label, type, x, y, connections, data) and 'edges' (source, target, label, strength). The 'condition' type nodes are most important and will be centered."
           },
           {
             type: "image_url",
@@ -127,19 +127,14 @@ serve(async (req) => {
 
 ${content}
 
-CRITICAL: You must assign UNIQUE x and y coordinates to each node for proper 2D layout:
-- Use x values between 100 and 700
-- Use y values between 100 and 500
-- Make sure nodes don't overlap - space them out logically
-- Group related nodes closer together
-- Keep the central entity (like patient or main condition) near center (400, 300)
+IMPORTANT: Identify the main DISEASE or CONDITION first - this is the most critical entity that will be positioned at the CENTER of the knowledge graph. Extract all related symptoms, medications, procedures, and patient information connected to this condition.
 
 Return a JSON object with 'nodes' and 'edges' arrays. Each node MUST have:
 - id: unique identifier (lowercase, underscore separated)
 - label: display name
-- type: one of (patient, condition, medication, procedure, symptom)
-- x: number between 100-700 (REQUIRED, must be unique per node)
-- y: number between 100-500 (REQUIRED, must be unique per node)
+- type: one of (patient, condition, medication, procedure, symptom) - make sure to mark the main disease/diagnosis as 'condition'
+- x: any number (coordinates will be auto-calculated with condition at center)
+- y: any number (coordinates will be auto-calculated with condition at center)
 - connections: array of connected node ids
 - data: object with additional information
 
@@ -149,7 +144,7 @@ Each edge MUST have:
 - label: relationship description
 - strength: number between 0-1
 
-Make the layout visually appealing and well-distributed.`
+Focus on identifying the primary medical CONDITION and building the knowledge graph around it.`
       });
     }
 
@@ -243,23 +238,48 @@ Make the layout visually appealing and well-distributed.`
 
     const knowledgeGraph = JSON.parse(toolCall.function.arguments);
     
-    // Ensure all nodes have valid x,y coordinates
+    // Position disease/condition nodes at the center and arrange others in circular layout
     if (knowledgeGraph.nodes) {
-      knowledgeGraph.nodes = knowledgeGraph.nodes.map((node: any, index: number) => {
-        // If x or y are 0 or missing, generate positions in a circular layout
-        if (!node.x || node.x === 0 || !node.y || node.y === 0) {
-          const angle = (index / knowledgeGraph.nodes.length) * 2 * Math.PI;
-          const radius = 200;
-          const centerX = 400;
-          const centerY = 300;
-          return {
-            ...node,
-            x: Math.round(centerX + radius * Math.cos(angle)),
-            y: Math.round(centerY + radius * Math.sin(angle))
-          };
+      const centerX = 400;
+      const centerY = 300;
+      const radius = 200;
+      
+      // Separate condition nodes from other nodes
+      const conditionNodes: any[] = [];
+      const otherNodes: any[] = [];
+      
+      knowledgeGraph.nodes.forEach((node: any) => {
+        if (node.type === 'condition') {
+          conditionNodes.push(node);
+        } else {
+          otherNodes.push(node);
         }
-        return node;
       });
+      
+      // Position condition nodes at the center
+      const conditionSpacing = 50;
+      conditionNodes.forEach((node: any, index: number) => {
+        if (conditionNodes.length === 1) {
+          // Single condition at exact center
+          node.x = centerX;
+          node.y = centerY;
+        } else {
+          // Multiple conditions arranged horizontally near center
+          const totalWidth = (conditionNodes.length - 1) * conditionSpacing;
+          node.x = centerX - totalWidth / 2 + index * conditionSpacing;
+          node.y = centerY;
+        }
+      });
+      
+      // Arrange other nodes in a circular pattern around the center
+      otherNodes.forEach((node: any, index: number) => {
+        const angle = (index / otherNodes.length) * 2 * Math.PI;
+        node.x = Math.round(centerX + radius * Math.cos(angle));
+        node.y = Math.round(centerY + radius * Math.sin(angle));
+      });
+      
+      // Merge back the nodes with condition nodes first
+      knowledgeGraph.nodes = [...conditionNodes, ...otherNodes];
     }
     
     console.log(`Extracted ${knowledgeGraph.nodes?.length || 0} nodes and ${knowledgeGraph.edges?.length || 0} edges`);
