@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      knowledge_graphs: {
+        Row: {
+          created_at: string
+          edges: Json
+          graph_analysis: string | null
+          icd10_codes: Json | null
+          id: string
+          nodes: Json
+          patient_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          edges: Json
+          graph_analysis?: string | null
+          icd10_codes?: Json | null
+          id?: string
+          nodes: Json
+          patient_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          edges?: Json
+          graph_analysis?: string | null
+          icd10_codes?: Json | null
+          id?: string
+          nodes?: Json
+          patient_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_graphs_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patient_files: {
         Row: {
           created_at: string

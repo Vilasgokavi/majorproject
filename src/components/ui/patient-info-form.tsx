@@ -15,9 +15,10 @@ interface PatientInfo {
 
 interface PatientInfoFormProps {
   onSubmit: (patientInfo: PatientInfo) => void;
+  onPatientCreated?: (patientId: string) => void;
 }
 
-export const PatientInfoForm: React.FC<PatientInfoFormProps> = ({ onSubmit }) => {
+export const PatientInfoForm: React.FC<PatientInfoFormProps> = ({ onSubmit, onPatientCreated }) => {
   const [name, setName] = useState('');
   const [age, setAge] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -61,6 +62,9 @@ export const PatientInfoForm: React.FC<PatientInfoFormProps> = ({ onSubmit }) =>
       });
 
       onSubmit({ name: name.trim(), age: age.trim(), pid });
+      if (onPatientCreated && data) {
+        onPatientCreated(data.id);
+      }
     } catch (error) {
       console.error('Error saving patient:', error);
       toast({
