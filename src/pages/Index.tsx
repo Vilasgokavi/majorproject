@@ -4,12 +4,14 @@ import { FileUpload } from '@/components/ui/file-upload';
 import { KnowledgeGraph } from '@/components/ui/knowledge-graph';
 import { AIInsights } from '@/components/ui/ai-insights';
 import { PatientInfoForm } from '@/components/ui/patient-info-form';
-import { Brain, Upload, Zap, TrendingUp, Loader2, Activity, Trash2 } from 'lucide-react';
+import { PatientList } from '@/components/ui/patient-list';
+import { Brain, Upload, Zap, TrendingUp, Loader2, Activity, Trash2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
   const [activeSection, setActiveSection] = useState<'upload' | 'graph' | 'insights' | 'settings'>('upload');
@@ -21,6 +23,8 @@ const Index = () => {
   const [graphAnalysis, setGraphAnalysis] = useState<string>('');
   const [isLoadingGraph, setIsLoadingGraph] = useState(false);
   const [patientInfo, setPatientInfo] = useState<{ name: string; age: string; pid: string } | null>(null);
+  const [currentPatientId, setCurrentPatientId] = useState<string | null>(null);
+  const [viewingPatient, setViewingPatient] = useState(false);
   const { toast } = useToast();
 
   const handleNodeClick = (node: any) => {
@@ -33,6 +37,111 @@ const Index = () => {
       title: 'File deleted',
       description: 'The uploaded file has been removed',
     });
+  };
+
+  const saveKnowledgeGraph = async (patientId: string, nodes: any[], edges: any[], analysis: string) => {
+    try {
+      const icd10 = extractICD10Codes(analysis);
+      
+      const { data: existing } = await supabase
+        .from("knowledge_graphs")
+        .select("id")
+        .eq("patient_id", patientId)
+        .maybeSingle();
+
+      if (existing) {
+        await supabase
+          .from("knowledge_graphs")
+          .update({
+            nodes,
+            edges,
+            icd10_codes: icd10,
+            graph_analysis: analysis,
+          })
+          .eq("id", existing.id);
+      } else {
+        await supabase
+          .from("knowledge_graphs")
+          .insert({
+            patient_id: patientId,
+            nodes,
+            edges,
+            icd10_codes: icd10,
+            graph_analysis: analysis,
+          });
+      }
+    } catch (error: any) {
+      console.error("Error saving knowledge graph:", error);
+    }
+  };
+
+  const loadPatientGraph = async (patientId: string) => {
+    try {
+      const { data: patient } = await supabase
+        .from("patients")
+        .select("*")
+        .eq("id", patientId)
+        .single();
+
+      const { data: graph } = await supabase
+        .from("knowledge_graphs")
+        .select("*")
+        .eq("patient_id", patientId)
+        .maybeSingle();
+
+      if (graph) {
+        setGraphData({ nodes: graph.nodes, edges: graph.edges });
+        setGraphAnalysis(graph.graph_analysis || "");
+      }
+
+      const { data: files } = await supabase
+        .from("patient_files")
+        .select("*")
+        .eq("patient_id", patientId);
+
+      if (files) {
+        setUploadedFiles(
+          files.map((f) => ({
+            id: f.id,
+            name: f.file_name,
+            size: f.file_size,
+            type: f.file_type,
+          }))
+        );
+      }
+
+      setPatientInfo({
+        name: patient.name,
+        age: patient.age,
+        pid: patient.pid,
+      });
+      setCurrentPatientId(patientId);
+      setViewingPatient(true);
+      setActiveSection("graph");
+
+      toast({
+        title: "Patient Loaded",
+        description: `Viewing ${patient?.name}'s knowledge graph`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleNewPatient = () => {
+    setUploadedFiles([]);
+    setGraphData(null);
+    setGraphAnalysis("");
+    setNodeAnalysis("");
+    setSelectedNode(null);
+    setPatientInfo(null);
+    setCurrentPatientId(null);
+    setViewingPatient(false);
+    setActiveSection("upload");
   };
 
   const extractICD10Codes = (analysisText: string): Array<{ code: string; description: string }> => {
@@ -70,7 +179,6 @@ const Index = () => {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              // Required for calling Supabase Edge Functions from the browser
               'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
               'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
             },
@@ -85,6 +193,16 @@ const Index = () => {
 
         const data = await response.json();
         setGraphAnalysis(data.analysis);
+
+        // Save to database if we have a current patient
+        if (currentPatientId) {
+          await saveKnowledgeGraph(
+            currentPatientId,
+            graphData.nodes,
+            graphData.edges,
+            data.analysis
+          );
+        }
       } catch (error) {
         console.error('Error analyzing graph:', error);
         toast({
@@ -98,7 +216,7 @@ const Index = () => {
     };
 
     analyzeGraph();
-  }, [graphData, toast]);
+  }, [graphData, currentPatientId, toast]);
 
   // Analyze selected node when it changes
   useEffect(() => {
@@ -151,6 +269,20 @@ const Index = () => {
       case 'upload':
         return (
           <div className="space-y-6">
+            {/* Patient List Section */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold text-foreground">Patient Records</h2>
+                {viewingPatient && (
+                  <Button onClick={handleNewPatient} variant="outline">
+                    <Plus className="h-4 w-4 mr-2" />
+                    New Patient
+                  </Button>
+                )}
+              </div>
+              <PatientList onViewPatient={loadPatientGraph} />
+            </div>
+
             {/* Features Grid */}
             <div className="grid md:grid-cols-3 gap-6 mb-8">
               <Card className="glass border-border/50">
@@ -242,6 +374,9 @@ const Index = () => {
                     title: 'Patient registered',
                     description: `PID: ${info.pid} - ${info.name}, ${info.age} years old`,
                   });
+                }}
+                onPatientCreated={(patientId) => {
+                  setCurrentPatientId(patientId);
                 }}
               />
             )}
