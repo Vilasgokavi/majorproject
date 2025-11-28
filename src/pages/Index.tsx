@@ -151,31 +151,6 @@ const Index = () => {
       case 'upload':
         return (
           <div className="space-y-6">
-            {/* Hero Section */}
-            <div className="glass-card text-center py-12">
-              <div className="max-w-2xl mx-auto">
-                <div className="inline-flex items-center justify-center p-3 rounded-full bg-gradient-to-r from-healthcare-blue to-healthcare-green mb-6">
-                  <Brain className="w-8 h-8 text-white" />
-                </div>
-                <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-healthcare-blue to-healthcare-green bg-clip-text text-transparent">
-                  AI-Powered Healthcare Knowledge Graph
-                </h1>
-                <p className="text-xl text-muted-foreground mb-8">
-                  Transform your medical data into intelligent, interactive 2D knowledge graphs
-                </p>
-                <div className="flex flex-wrap gap-4 justify-center">
-                  <Button variant="hero" size="lg">
-                    <Upload className="w-5 h-5" />
-                    Start Upload
-                  </Button>
-                  <Button variant="glass" size="lg">
-                    <Brain className="w-5 h-5" />
-                    View Demo Graph
-                  </Button>
-                </div>
-              </div>
-            </div>
-
             {/* Features Grid */}
             <div className="grid md:grid-cols-3 gap-6 mb-8">
               <Card className="glass border-border/50">
