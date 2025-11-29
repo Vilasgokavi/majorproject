@@ -275,12 +275,12 @@ const Index = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Upload className="w-5 h-5 text-primary" />
-                    Multi-format Support
+                    Upload Data
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
-                    Upload CSV files, text notes, and medical images. Our AI extracts entities and relationships automatically.
+                    Import medical files
                   </p>
                 </CardContent>
               </Card>
@@ -289,12 +289,12 @@ const Index = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Brain className="w-5 h-5 text-secondary" />
-                    2D Visualization
+                    Knowledge Graph
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
-                    Interactive 2D knowledge graphs with zoom, pan, and filtering capabilities.
+                    3D visualization
                   </p>
                 </CardContent>
               </Card>
@@ -308,10 +308,24 @@ const Index = () => {
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
-                    Get intelligent summaries, treatment suggestions, and medication recommendations powered by Gemini AI.
+                    Smart analysis
                   </p>
                 </CardContent>
               </Card>
+            </div>
+
+            {/* Patient Records Section */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold text-foreground">Patient Records</h2>
+                {viewingPatient && (
+                  <Button onClick={handleNewPatient} variant="outline">
+                    <Plus className="h-4 w-4 mr-2" />
+                    New Patient
+                  </Button>
+                )}
+              </div>
+              <PatientList onViewPatient={loadPatientGraph} />
             </div>
 
             {/* Uploaded Files Display */}
@@ -598,32 +612,7 @@ const Index = () => {
       nodesCount={graphData?.nodes?.length || 0}
       edgesCount={graphData?.edges?.length || 0}
     >
-      <div className="flex gap-6">
-        {/* Patient Records Column */}
-        <div className="w-80 shrink-0">
-          <Card className="glass border-border/50 sticky top-6">
-            <div className="p-4 border-b border-border/50">
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-lg font-bold text-foreground">Patient Records</h2>
-                {viewingPatient && (
-                  <Button onClick={handleNewPatient} variant="outline" size="sm">
-                    <Plus className="h-4 w-4 mr-1" />
-                    New
-                  </Button>
-                )}
-              </div>
-            </div>
-            <div className="p-4 max-h-[calc(100vh-200px)] overflow-y-auto">
-              <PatientList onViewPatient={loadPatientGraph} />
-            </div>
-          </Card>
-        </div>
-
-        {/* Main Content Column */}
-        <div className="flex-1 min-w-0">
-          {renderContent()}
-        </div>
-      </div>
+      {renderContent()}
     </DashboardLayout>
   );
 };

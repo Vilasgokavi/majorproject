@@ -67,7 +67,6 @@ export const AIInsights: React.FC<AIInsightsProps> = ({
   insights = sampleInsights,
   graphData,
 }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'details'>('overview');
   const [nodeAnalysis, setNodeAnalysis] = useState<string>('');
   const [graphAnalysis, setGraphAnalysis] = useState<string>('');
   const [isLoadingNode, setIsLoadingNode] = useState(false);
@@ -188,114 +187,81 @@ export const AIInsights: React.FC<AIInsightsProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="glass-card">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 rounded-lg bg-primary/10">
-            <Brain className="w-6 h-6 text-primary" />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold">AI-Powered Insights</h3>
-            <p className="text-sm text-muted-foreground">
-              Intelligent analysis of medical knowledge graph
-            </p>
-          </div>
-        </div>
-
-        {/* Tab Navigation */}
-        <div className="flex gap-2 mb-4">
-          <Button
-            variant={activeTab === 'overview' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setActiveTab('overview')}
-          >
-            Overview
-          </Button>
-          <Button
-            variant={activeTab === 'details' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setActiveTab('details')}
-            disabled={!selectedNode}
-          >
-            Node Details
-          </Button>
-        </div>
-      </div>
-
-      {/* Content */}
-      {activeTab === 'overview' && (
-        <div className="space-y-4">
-          {/* Full Graph Analysis */}
-          <Card className="glass border-border/50">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h4 className="font-semibold mb-1 text-lg">Knowledge Graph Summary & Suggestions</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Comprehensive AI analysis with clinical recommendations
-                  </p>
-                </div>
-                <Button 
-                  onClick={analyzeFullGraph} 
-                  disabled={isLoadingGraph || !graphData}
-                  variant="outline"
-                  size="sm"
-                >
-                  {isLoadingGraph ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Analyzing...
-                    </>
-                  ) : (
-                    <>
-                      <Brain className="w-4 h-4" />
-                      Refresh Analysis
-                    </>
-                  )}
-                </Button>
+      {/* Full Graph Analysis - Always Visible */}
+      <Card className="glass border-border/50">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Brain className="w-6 h-6 text-primary" />
               </div>
-              
+              <div>
+                <CardTitle>Knowledge Graph Summary & ICD-10 Codes</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Comprehensive AI analysis with clinical recommendations
+                </p>
+              </div>
+            </div>
+            <Button 
+              onClick={analyzeFullGraph} 
+              disabled={isLoadingGraph || !graphData}
+              variant="outline"
+              size="sm"
+            >
               {isLoadingGraph ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                  <span className="ml-3 text-muted-foreground">Generating comprehensive analysis...</span>
-                </div>
-              ) : graphAnalysis ? (
-                <div className="mt-4 p-6 bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20 rounded-lg">
-                  <div className="prose prose-sm max-w-none dark:prose-invert">
-                    <div className="whitespace-pre-wrap text-sm leading-relaxed">{graphAnalysis}</div>
-                  </div>
-                </div>
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Analyzing...
+                </>
               ) : (
-                <div className="flex items-center justify-center py-8 text-muted-foreground">
-                  <p className="text-sm">Upload medical data to generate AI insights</p>
-                </div>
+                <>
+                  <Brain className="w-4 h-4" />
+                  Refresh Analysis
+                </>
               )}
-            </CardContent>
-          </Card>
-        </div>
-      )}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoadingGraph ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <span className="ml-3 text-muted-foreground">Generating comprehensive analysis...</span>
+            </div>
+          ) : graphAnalysis ? (
+            <div className="p-6 bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20 rounded-lg">
+              <div className="prose prose-sm max-w-none dark:prose-invert">
+                <div className="whitespace-pre-wrap text-sm leading-relaxed">{graphAnalysis}</div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center py-8 text-muted-foreground">
+              <p className="text-sm">Upload medical data to generate AI insights</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-      {activeTab === 'details' && selectedNode && (
+      {/* Node-Specific Analysis - Only show when node is selected */}
+      {selectedNode && (
         <Card className="glass border-border/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Activity className="w-5 h-5" />
-              {selectedNode.label} Details
+              {selectedNode.label} - Node Analysis
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* AI Analysis Section */}
             {isLoadingNode ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                <span className="ml-3 text-muted-foreground">Generating AI analysis...</span>
+                <span className="ml-3 text-muted-foreground">Analyzing node...</span>
               </div>
             ) : nodeAnalysis ? (
-              <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
+              <div className="p-4 bg-secondary/5 border border-secondary/20 rounded-lg">
                 <h4 className="font-semibold mb-3 flex items-center gap-2">
-                  <Brain className="w-4 h-4 text-primary" />
-                  AI Analysis & ICD-10 Codes
+                  <Brain className="w-4 h-4 text-secondary" />
+                  AI Node Summary
                 </h4>
                 <div className="prose prose-sm max-w-none dark:prose-invert">
                   <div className="whitespace-pre-wrap text-sm">{nodeAnalysis}</div>
@@ -347,19 +313,6 @@ export const AIInsights: React.FC<AIInsightsProps> = ({
                 </div>
               )}
             </div>
-
-          </CardContent>
-        </Card>
-      )}
-
-      {activeTab === 'details' && !selectedNode && (
-        <Card className="glass border-border/50">
-          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <Brain className="w-12 h-12 text-muted-foreground mb-4" />
-            <h4 className="font-semibold mb-2">No Node Selected</h4>
-            <p className="text-sm text-muted-foreground">
-              Click on a node in the knowledge graph to view detailed insights
-            </p>
           </CardContent>
         </Card>
       )}
