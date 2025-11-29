@@ -270,7 +270,7 @@ const Index = () => {
         return (
           <div className="space-y-6">
             {/* Features Grid */}
-            <div className="grid md:grid-cols-3 gap-6 mb-8">
+            <div className="grid md:grid-cols-4 gap-6 mb-8">
               <Card className="glass border-border/50">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -312,10 +312,27 @@ const Index = () => {
                   </p>
                 </CardContent>
               </Card>
+
+              <Card className="glass border-border/50 cursor-pointer hover:border-primary/50 transition-colors" onClick={() => {
+                const element = document.getElementById('patient-records-section');
+                element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Activity className="w-5 h-5 text-accent" />
+                    Patient Records
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    View patient history
+                  </p>
+                </CardContent>
+              </Card>
             </div>
 
             {/* Patient Records Section */}
-            <div>
+            <div id="patient-records-section">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-bold text-foreground">Patient Records</h2>
                 {viewingPatient && (
