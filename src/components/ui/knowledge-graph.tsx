@@ -29,7 +29,12 @@ interface KnowledgeGraphProps {
   patientId?: string;
 }
 
-const getNodeColor = (type: string) => {
+const getNodeColor = (type: string, isCenterNode: boolean = false) => {
+  // Center node (disease/condition) gets special gold color
+  if (isCenterNode && type === 'condition') {
+    return 'hsl(45 100% 50%)'; // Bright gold for center disease node
+  }
+  
   switch (type) {
     case 'patient': return 'hsl(180 100% 50%)'; // Neon cyan
     case 'condition': return 'hsl(320 100% 50%)'; // Neon magenta
@@ -211,6 +216,15 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
   // Apply circular layout to nodes
   const displayNodes = applyCircularLayout(rawNodes);
   
+  // Find the center node (condition with most connections)
+  const centerNode = displayNodes.find(n => {
+    if (n.type !== 'condition') return false;
+    const conditionNodes = displayNodes.filter(node => node.type === 'condition');
+    if (conditionNodes.length === 0) return false;
+    const maxConnections = Math.max(...conditionNodes.map(c => c.connections.length));
+    return n.connections.length === maxConnections;
+  });
+  
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -385,15 +399,15 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                   cx={node.x}
                   cy={node.y}
                   r={nodeRadius}
-                  fill={getNodeColor(node.type)}
+                  fill={getNodeColor(node.type, centerNode?.id === node.id)}
                   opacity={nodeOpacity}
                   className="transition-all duration-300"
                   style={{
                     filter: isSelected 
-                      ? `drop-shadow(0 0 30px ${getNodeColor(node.type)}) drop-shadow(0 0 60px ${getNodeColor(node.type)})` 
+                      ? `drop-shadow(0 0 30px ${getNodeColor(node.type, centerNode?.id === node.id)}) drop-shadow(0 0 60px ${getNodeColor(node.type, centerNode?.id === node.id)})` 
                       : isHovered 
-                      ? `drop-shadow(0 0 20px ${getNodeColor(node.type)}) drop-shadow(0 0 40px ${getNodeColor(node.type)})` 
-                      : `drop-shadow(0 0 10px ${getNodeColor(node.type)})`
+                      ? `drop-shadow(0 0 20px ${getNodeColor(node.type, centerNode?.id === node.id)}) drop-shadow(0 0 40px ${getNodeColor(node.type, centerNode?.id === node.id)})` 
+                      : `drop-shadow(0 0 10px ${getNodeColor(node.type, centerNode?.id === node.id)})`
                   }}
                 />
                 
@@ -409,7 +423,7 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                     fontWeight: 600,
                     fill: 'hsl(var(--foreground))',
                     opacity: labelOpacity,
-                    textShadow: isSelected ? `0 0 12px ${getNodeColor(node.type)}` : `0 0 8px ${getNodeColor(node.type)}`
+                    textShadow: isSelected ? `0 0 12px ${getNodeColor(node.type, centerNode?.id === node.id)}` : `0 0 8px ${getNodeColor(node.type, centerNode?.id === node.id)}`
                   }}
                 >
                   {node.label}
@@ -425,9 +439,9 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                     pointerEvents: 'none',
                     fontSize: '11px',
                     fontWeight: 500,
-                    fill: getNodeColor(node.type),
+                    fill: getNodeColor(node.type, centerNode?.id === node.id),
                     opacity: labelOpacity,
-                    textShadow: isSelected ? `0 0 10px ${getNodeColor(node.type)}` : `0 0 6px ${getNodeColor(node.type)}`
+                    textShadow: isSelected ? `0 0 10px ${getNodeColor(node.type, centerNode?.id === node.id)}` : `0 0 6px ${getNodeColor(node.type, centerNode?.id === node.id)}`
                   }}
                 >
                   {node.type}
