@@ -269,20 +269,6 @@ const Index = () => {
       case 'upload':
         return (
           <div className="space-y-6">
-            {/* Patient List Section */}
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-2xl font-bold text-foreground">Patient Records</h2>
-                {viewingPatient && (
-                  <Button onClick={handleNewPatient} variant="outline">
-                    <Plus className="h-4 w-4 mr-2" />
-                    New Patient
-                  </Button>
-                )}
-              </div>
-              <PatientList onViewPatient={loadPatientGraph} />
-            </div>
-
             {/* Features Grid */}
             <div className="grid md:grid-cols-3 gap-6 mb-8">
               <Card className="glass border-border/50">
@@ -612,7 +598,32 @@ const Index = () => {
       nodesCount={graphData?.nodes?.length || 0}
       edgesCount={graphData?.edges?.length || 0}
     >
-      {renderContent()}
+      <div className="flex gap-6">
+        {/* Patient Records Column */}
+        <div className="w-80 shrink-0">
+          <Card className="glass border-border/50 sticky top-6">
+            <div className="p-4 border-b border-border/50">
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-lg font-bold text-foreground">Patient Records</h2>
+                {viewingPatient && (
+                  <Button onClick={handleNewPatient} variant="outline" size="sm">
+                    <Plus className="h-4 w-4 mr-1" />
+                    New
+                  </Button>
+                )}
+              </div>
+            </div>
+            <div className="p-4 max-h-[calc(100vh-200px)] overflow-y-auto">
+              <PatientList onViewPatient={loadPatientGraph} />
+            </div>
+          </Card>
+        </div>
+
+        {/* Main Content Column */}
+        <div className="flex-1 min-w-0">
+          {renderContent()}
+        </div>
+      </div>
     </DashboardLayout>
   );
 };
