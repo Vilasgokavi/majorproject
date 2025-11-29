@@ -185,86 +185,227 @@ export const AIInsights: React.FC<AIInsightsProps> = ({
     return 'text-muted-foreground';
   };
 
+  // Parse graph analysis into structured sections
+  const parseAnalysis = (analysisText: string) => {
+    if (!analysisText) return { keyInsights: [], treatments: [], risks: [], tests: [] };
+
+    const sections = {
+      keyInsights: [] as string[],
+      treatments: [] as { title: string; description: string; priority: string }[],
+      risks: [] as { title: string; description: string; severity: string }[],
+      tests: [] as string[]
+    };
+
+    // Split by common section headers
+    const lines = analysisText.split('\n').filter(line => line.trim());
+    
+    let currentSection = 'keyInsights';
+    
+    lines.forEach(line => {
+      const lower = line.toLowerCase();
+      
+      if (lower.includes('treatment') || lower.includes('recommendation')) {
+        currentSection = 'treatments';
+      } else if (lower.includes('risk') || lower.includes('complication')) {
+        currentSection = 'risks';
+      } else if (lower.includes('test') || lower.includes('diagnostic')) {
+        currentSection = 'tests';
+      }
+      
+      // Extract content based on section
+      if (line.startsWith('- ') || line.startsWith('• ') || line.match(/^\d+\./)) {
+        const content = line.replace(/^[-•]\s*/, '').replace(/^\d+\.\s*/, '').trim();
+        
+        if (currentSection === 'keyInsights' && content.length > 20) {
+          sections.keyInsights.push(content);
+        } else if (currentSection === 'treatments' && content.length > 15) {
+          sections.treatments.push({
+            title: content.split(':')[0] || content.substring(0, 50),
+            description: content.split(':')[1] || content,
+            priority: content.toLowerCase().includes('urgent') || content.toLowerCase().includes('critical') ? 'High priority' : 'Medium priority'
+          });
+        } else if (currentSection === 'risks' && content.length > 15) {
+          sections.risks.push({
+            title: content.split(':')[0] || content.substring(0, 50),
+            description: content.split(':')[1] || content,
+            severity: content.toLowerCase().includes('severe') || content.toLowerCase().includes('high') ? 'High' : 'Medium'
+          });
+        } else if (currentSection === 'tests' && content.length > 10) {
+          sections.tests.push(content);
+        }
+      }
+    });
+
+    // Fallback: if no structured data found, extract from full text
+    if (sections.keyInsights.length === 0 && sections.treatments.length === 0) {
+      const sentences = analysisText.match(/[^.!?]+[.!?]+/g) || [];
+      sections.keyInsights = sentences.slice(0, 4).map(s => s.trim());
+    }
+
+    return sections;
+  };
+
+  const parsedAnalysis = parseAnalysis(graphAnalysis);
+
   return (
     <div className="space-y-6">
-      {/* Full Graph Analysis - Always Visible */}
+      {/* Key Insights Section */}
       <Card className="glass border-border/50">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <Brain className="w-6 h-6 text-primary" />
-              </div>
-              <div>
-                <CardTitle>Knowledge Graph Summary & ICD-10 Codes</CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Comprehensive AI analysis with clinical recommendations
-                </p>
-              </div>
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Lightbulb className="w-5 h-5 text-primary" />
             </div>
-            <Button 
-              onClick={analyzeFullGraph} 
-              disabled={isLoadingGraph || !graphData}
-              variant="outline"
-              size="sm"
-            >
-              {isLoadingGraph ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Analyzing...
-                </>
-              ) : (
-                <>
-                  <Brain className="w-4 h-4" />
-                  Refresh Analysis
-                </>
-              )}
-            </Button>
+            <CardTitle>Key Insights</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
           {isLoadingGraph ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-              <span className="ml-3 text-muted-foreground">Generating comprehensive analysis...</span>
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
             </div>
-          ) : graphAnalysis ? (
-            <div className="p-6 bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20 rounded-lg">
-              <div className="prose prose-sm max-w-none dark:prose-invert">
-                <div className="whitespace-pre-wrap text-sm leading-relaxed">{graphAnalysis}</div>
+          ) : parsedAnalysis.keyInsights.length > 0 ? (
+            <div className="space-y-3">
+              {parsedAnalysis.keyInsights.map((insight, idx) => (
+                <div key={idx} className="p-4 bg-muted/30 border border-border/50 rounded-lg">
+                  <p className="text-sm leading-relaxed">{insight}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground py-4">Upload medical data to generate insights</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Two Column Layout for Treatment & Risk */}
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* Treatment Recommendations */}
+        <Card className="glass border-border/50">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-secondary/10">
+                <Activity className="w-5 h-5 text-secondary" />
+              </div>
+              <CardTitle>Treatment Recommendations</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {isLoadingGraph ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-secondary" />
+              </div>
+            ) : parsedAnalysis.treatments.length > 0 ? (
+              <div className="space-y-4">
+                {parsedAnalysis.treatments.map((treatment, idx) => (
+                  <div key={idx} className="p-4 bg-secondary/5 border border-secondary/20 rounded-lg">
+                    <div className="flex items-start justify-between mb-2">
+                      <h4 className="font-semibold text-sm">{treatment.title}</h4>
+                      <Badge className={treatment.priority.includes('High') ? 'bg-destructive' : 'bg-primary'}>
+                        {treatment.priority}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{treatment.description}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground py-4">No treatment recommendations available</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Risk Factors */}
+        <Card className="glass border-border/50">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-destructive/10">
+                <AlertTriangle className="w-5 h-5 text-destructive" />
+              </div>
+              <CardTitle>Risk Factors</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {isLoadingGraph ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-destructive" />
+              </div>
+            ) : parsedAnalysis.risks.length > 0 ? (
+              <div className="space-y-4">
+                {parsedAnalysis.risks.map((risk, idx) => (
+                  <div key={idx} className="p-4 bg-destructive/5 border border-destructive/20 rounded-lg">
+                    <div className="flex items-start justify-between mb-2">
+                      <h4 className="font-semibold text-sm">{risk.title}</h4>
+                      <Badge variant={risk.severity === 'High' ? 'destructive' : 'secondary'}>
+                        {risk.severity}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{risk.description}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground py-4">No risk factors identified</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Suggested Tests & Actions */}
+      <Card className="glass border-border/50">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-healthcare-green/10">
+              <TrendingUp className="w-5 h-5 text-healthcare-green" />
+            </div>
+            <CardTitle>Suggested Tests & Actions</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoadingGraph ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-healthcare-green" />
+            </div>
+          ) : parsedAnalysis.tests.length > 0 ? (
+            <div>
+              <h4 className="font-semibold mb-3 text-healthcare-green">Recommended Tests:</h4>
+              <div className="space-y-2">
+                {parsedAnalysis.tests.map((test, idx) => (
+                  <div key={idx} className="p-3 bg-healthcare-green/5 border border-healthcare-green/20 rounded-lg">
+                    <p className="text-sm">{test}</p>
+                  </div>
+                ))}
               </div>
             </div>
           ) : (
-            <div className="flex items-center justify-center py-8 text-muted-foreground">
-              <p className="text-sm">Upload medical data to generate AI insights</p>
-            </div>
+            <p className="text-sm text-muted-foreground py-4">No test recommendations available</p>
           )}
         </CardContent>
       </Card>
 
       {/* Node-Specific Analysis - Only show when node is selected */}
       {selectedNode && (
-        <Card className="glass border-border/50">
+        <Card className="glass border-border/50 border-accent">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Activity className="w-5 h-5" />
-              {selectedNode.label} - Node Analysis
+              <Brain className="w-5 h-5 text-accent" />
+              {selectedNode.label} - Detailed Node Analysis
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {isLoadingNode ? (
               <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                <Loader2 className="w-8 h-8 animate-spin text-accent" />
                 <span className="ml-3 text-muted-foreground">Analyzing node...</span>
               </div>
             ) : nodeAnalysis ? (
-              <div className="p-4 bg-secondary/5 border border-secondary/20 rounded-lg">
+              <div className="p-4 bg-accent/5 border border-accent/20 rounded-lg">
                 <h4 className="font-semibold mb-3 flex items-center gap-2">
-                  <Brain className="w-4 h-4 text-secondary" />
+                  <Brain className="w-4 h-4 text-accent" />
                   AI Node Summary
                 </h4>
                 <div className="prose prose-sm max-w-none dark:prose-invert">
-                  <div className="whitespace-pre-wrap text-sm">{nodeAnalysis}</div>
+                  <div className="whitespace-pre-wrap text-sm leading-relaxed">{nodeAnalysis}</div>
                 </div>
               </div>
             ) : null}
