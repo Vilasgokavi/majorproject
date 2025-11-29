@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Trash2, Eye, Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Trash2, Eye, Loader2, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -32,6 +33,7 @@ export const PatientList = ({ onViewPatient }: PatientListProps) => {
   const [loading, setLoading] = useState(true);
   const [deletePatientId, setDeletePatientId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -110,6 +112,15 @@ export const PatientList = ({ onViewPatient }: PatientListProps) => {
     );
   }
 
+  const filteredPatients = patients.filter((patient) => {
+    const query = searchQuery.toLowerCase();
+    return (
+      patient.name.toLowerCase().includes(query) ||
+      patient.pid.toLowerCase().includes(query) ||
+      patient.age.toLowerCase().includes(query)
+    );
+  });
+
   if (patients.length === 0) {
     return (
       <div className="text-center p-8">
@@ -120,8 +131,26 @@ export const PatientList = ({ onViewPatient }: PatientListProps) => {
 
   return (
     <>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {patients.map((patient) => (
+      <div className="space-y-4 mb-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Search by name, PID, or age..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+      </div>
+      
+      {filteredPatients.length === 0 ? (
+        <div className="text-center p-8">
+          <p className="text-muted-foreground">No patients match your search.</p>
+        </div>
+      ) : (
+        <div className="grid gap-4">
+        {filteredPatients.map((patient) => (
           <Card
             key={patient.id}
             className="p-4 bg-card border-border/50 hover:border-primary/50 transition-all"
@@ -157,6 +186,7 @@ export const PatientList = ({ onViewPatient }: PatientListProps) => {
           </Card>
         ))}
       </div>
+      )}
 
       <AlertDialog open={!!deletePatientId} onOpenChange={() => setDeletePatientId(null)}>
         <AlertDialogContent>
