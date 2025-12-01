@@ -268,66 +268,153 @@ const Index = () => {
     switch (activeSection) {
       case 'upload':
         return (
-          <div className="space-y-8">
-            {/* Welcome Section */}
-            <Card className="glass border-border/50 overflow-hidden">
-              <CardContent className="pt-8 pb-12">
-                <div className="text-center space-y-6">
-                  <div className="inline-flex items-center justify-center p-4 rounded-full bg-gradient-to-r from-healthcare-blue/20 to-healthcare-green/20">
-                    <Brain className="w-12 h-12 text-primary" />
-                  </div>
-                  
-                  <div>
-                    <h1 className="text-4xl font-bold mb-3 bg-gradient-to-r from-healthcare-blue to-healthcare-green bg-clip-text text-transparent">
-                      Welcome to HealthGraph AI
-                    </h1>
-                    <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                      Transform medical data into intelligent knowledge graphs with AI-powered insights
-                    </p>
-                  </div>
+          <div className="space-y-6">
+            {/* Features Grid */}
+            <div className="grid md:grid-cols-4 gap-6 mb-8">
+              <Card className="glass border-border/50">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Upload className="w-5 h-5 text-primary" />
+                    Upload Data
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Import medical files
+                  </p>
+                </CardContent>
+              </Card>
 
-                  {/* Features Highlight */}
-                  <div className="grid md:grid-cols-3 gap-6 mt-8 max-w-4xl mx-auto">
-                    <div className="p-6 rounded-lg bg-muted/30 space-y-3">
-                      <div className="inline-flex items-center justify-center p-3 rounded-full bg-primary/10">
-                        <Upload className="w-6 h-6 text-primary" />
+              <Card className="glass border-border/50">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Brain className="w-5 h-5 text-secondary" />
+                    Knowledge Graph
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    3D visualization
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="glass border-border/50">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Zap className="w-5 h-5 text-healthcare-green" />
+                    AI Insights
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Smart analysis
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="glass border-border/50 cursor-pointer hover:border-primary/50 transition-colors" onClick={() => {
+                const element = document.getElementById('patient-records-section');
+                element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Activity className="w-5 h-5 text-accent" />
+                    Patient Records
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    View patient history
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Patient Records Section */}
+            <div id="patient-records-section">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold text-foreground">Patient Records</h2>
+                {viewingPatient && (
+                  <Button onClick={handleNewPatient} variant="outline">
+                    <Plus className="h-4 w-4 mr-2" />
+                    New Patient
+                  </Button>
+                )}
+              </div>
+              <PatientList onViewPatient={loadPatientGraph} />
+            </div>
+
+            {/* Uploaded Files Display */}
+            {uploadedFiles.length > 0 && (
+              <Card className="glass border-border/50">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Upload className="w-5 h-5 text-primary" />
+                    Uploaded Medical Data
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {uploadedFiles.map((file: any) => (
+                      <div key={file.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                        <div className="flex-1">
+                          <p className="font-medium">{file.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {(file.size / 1024).toFixed(2)} KB
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline">Processed</Badge>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteFile(file.id)}
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </div>
-                      <h3 className="font-semibold text-lg">Upload Medical Data</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Import patient records, lab results, and medical documents for analysis
-                      </p>
-                    </div>
-
-                    <div className="p-6 rounded-lg bg-muted/30 space-y-3">
-                      <div className="inline-flex items-center justify-center p-3 rounded-full bg-secondary/10">
-                        <Brain className="w-6 h-6 text-secondary" />
-                      </div>
-                      <h3 className="font-semibold text-lg">3D Knowledge Graph</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Visualize relationships between medical entities in an interactive graph
-                      </p>
-                    </div>
-
-                    <div className="p-6 rounded-lg bg-muted/30 space-y-3">
-                      <div className="inline-flex items-center justify-center p-3 rounded-full bg-accent/10">
-                        <Zap className="w-6 h-6 text-accent" />
-                      </div>
-                      <h3 className="font-semibold text-lg">AI-Powered Insights</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Get intelligent analysis, ICD-10 codes, and clinical recommendations
-                      </p>
-                    </div>
+                    ))}
                   </div>
+                </CardContent>
+              </Card>
+            )}
 
-                  <div className="pt-4">
-                    <Button onClick={() => setActiveSection('graph')} variant="hero" size="lg" className="group">
-                      <Brain className="w-5 h-5 mr-2 group-hover:animate-pulse" />
-                      Get Started
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Patient Info Form */}
+            {!patientInfo && (
+              <PatientInfoForm
+                onSubmit={(info) => {
+                  setPatientInfo(info);
+                  toast({
+                    title: 'Patient registered',
+                    description: `PID: ${info.pid} - ${info.name}, ${info.age} years old`,
+                  });
+                }}
+                onPatientCreated={(patientId) => {
+                  setCurrentPatientId(patientId);
+                }}
+              />
+            )}
+
+            {/* File Upload Section */}
+            {patientInfo && (
+              <FileUpload
+                patientInfo={patientInfo}
+                onFilesUploaded={(files) => {
+                  setUploadedFiles(files);
+                }}
+                onFileRemoved={(fileId) => {
+                  setUploadedFiles(prev => prev.filter(f => f.id !== fileId));
+                }}
+                onKnowledgeGraphGenerated={(data) => {
+                  setGraphData(data);
+                  // Auto-switch to graph view after extraction
+                  setTimeout(() => setActiveSection('graph'), 1500);
+                }}
+              />
+            )}
           </div>
         );
 
