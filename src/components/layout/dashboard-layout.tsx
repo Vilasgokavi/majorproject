@@ -41,13 +41,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       icon: BarChart3,
       description: 'Smart analysis',
     },
-    {
-      id: 'upload' as const,
-      label: 'Patient Records',
-      icon: Users,
-      description: 'View patient history',
-      scrollTo: 'patient-records-section'
-    },
   ];
 
   return (
@@ -104,17 +97,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     <button
                       key={item.id + item.label}
                       onClick={() => {
-                        if (item.scrollTo) {
-                          const element = document.getElementById(item.scrollTo);
-                          element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        } else {
-                          onSectionChange?.(item.id);
-                        }
+                        onSectionChange?.(item.id);
                         setSidebarOpen(false);
                       }}
                       className={cn(
                         "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-smooth",
-                        isActive && !item.scrollTo
+                        isActive
                           ? "bg-primary text-primary-foreground shadow-glow-primary"
                           : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
                       )}
