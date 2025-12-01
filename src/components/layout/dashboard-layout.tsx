@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Brain, Upload, BarChart3, Menu, X, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -21,6 +22,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   edgesCount = 0,
 }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const navigate = useNavigate();
 
   const navigationItems = [
     {
@@ -46,7 +48,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       label: 'Patient Records',
       icon: Users,
       description: 'View patient history',
-      scrollTo: 'patient-records-section'
+      navigateTo: '/patients'
     },
   ];
 
@@ -104,8 +106,10 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     <button
                       key={item.id + item.label}
                       onClick={() => {
-                        if (item.scrollTo) {
-                          const element = document.getElementById(item.scrollTo);
+                        if ((item as any).navigateTo) {
+                          navigate((item as any).navigateTo);
+                        } else if ((item as any).scrollTo) {
+                          const element = document.getElementById((item as any).scrollTo);
                           element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                         } else {
                           onSectionChange?.(item.id);
@@ -114,7 +118,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                       }}
                       className={cn(
                         "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-smooth",
-                        isActive && !item.scrollTo
+                        isActive && !(item as any).scrollTo && !(item as any).navigateTo
                           ? "bg-primary text-primary-foreground shadow-glow-primary"
                           : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
                       )}
