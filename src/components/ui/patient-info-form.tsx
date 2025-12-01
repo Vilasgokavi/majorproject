@@ -84,7 +84,7 @@ export const PatientInfoForm: React.FC<PatientInfoFormProps> = ({ onSubmit, onPa
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <User className="w-5 h-5 text-primary" />
-          Patient Information
+          Patient Registration
         </CardTitle>
       </CardHeader>
       <CardContent>

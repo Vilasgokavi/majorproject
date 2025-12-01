@@ -4,8 +4,7 @@ import { FileUpload } from '@/components/ui/file-upload';
 import { KnowledgeGraph } from '@/components/ui/knowledge-graph';
 import { AIInsights } from '@/components/ui/ai-insights';
 import { PatientInfoForm } from '@/components/ui/patient-info-form';
-import { PatientList } from '@/components/ui/patient-list';
-import { Brain, Upload, Zap, TrendingUp, Loader2, Activity, Trash2, Plus } from 'lucide-react';
+import { Brain, Upload, Zap, TrendingUp, Loader2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -270,7 +269,7 @@ const Index = () => {
         return (
           <div className="space-y-6">
             {/* Features Grid */}
-            <div className="grid md:grid-cols-4 gap-6 mb-8">
+            <div className="grid md:grid-cols-3 gap-6 mb-8">
               <Card className="glass border-border/50">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -312,37 +311,6 @@ const Index = () => {
                   </p>
                 </CardContent>
               </Card>
-
-              <Card className="glass border-border/50 cursor-pointer hover:border-primary/50 transition-colors" onClick={() => {
-                const element = document.getElementById('patient-records-section');
-                element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Activity className="w-5 h-5 text-accent" />
-                    Patient Records
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">
-                    View patient history
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Patient Records Section */}
-            <div id="patient-records-section">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-2xl font-bold text-foreground">Patient Records</h2>
-                {viewingPatient && (
-                  <Button onClick={handleNewPatient} variant="outline">
-                    <Plus className="h-4 w-4 mr-2" />
-                    New Patient
-                  </Button>
-                )}
-              </div>
-              <PatientList onViewPatient={loadPatientGraph} />
             </div>
 
             {/* Uploaded Files Display */}
@@ -512,7 +480,7 @@ const Index = () => {
               <Card className="glass border-border/50">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Activity className="w-5 h-5" />
+                    <Brain className="w-5 h-5" />
                     {selectedNode.label} - AI Analysis
                   </CardTitle>
                 </CardHeader>
