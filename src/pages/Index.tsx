@@ -268,6 +268,49 @@ const Index = () => {
       case 'upload':
         return (
           <div className="space-y-6">
+            {/* Welcome Section */}
+            <Card className="glass border-border/50 bg-gradient-to-br from-primary/10 via-background to-secondary/10">
+              <CardContent className="pt-6 pb-8">
+                <div className="flex items-start gap-4">
+                  <div className="p-3 rounded-xl bg-gradient-to-r from-healthcare-blue to-healthcare-green shadow-glow-primary">
+                    <Brain className="w-8 h-8 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h2 className="text-3xl font-bold mb-3 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                      Welcome to HealthGraph AI
+                    </h2>
+                    <p className="text-muted-foreground text-lg mb-6 leading-relaxed">
+                      Transform medical data into actionable insights with AI-powered knowledge graphs. 
+                      Visualize complex patient relationships, extract ICD-10 codes, and receive intelligent clinical recommendations.
+                    </p>
+                    <div className="grid sm:grid-cols-3 gap-4">
+                      <div className="flex items-start gap-3 p-3 rounded-lg bg-background/50 backdrop-blur-sm border border-border/30">
+                        <Upload className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="font-semibold text-sm">Smart Data Import</p>
+                          <p className="text-xs text-muted-foreground">Upload medical files and AI validates content</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3 p-3 rounded-lg bg-background/50 backdrop-blur-sm border border-border/30">
+                        <Brain className="w-5 h-5 text-secondary mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="font-semibold text-sm">Interactive Graphs</p>
+                          <p className="text-xs text-muted-foreground">Visualize entities and relationships in 2D</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3 p-3 rounded-lg bg-background/50 backdrop-blur-sm border border-border/30">
+                        <Zap className="w-5 h-5 text-healthcare-green mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="font-semibold text-sm">AI-Powered Analysis</p>
+                          <p className="text-xs text-muted-foreground">Get ICD-10 codes and clinical insights</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Features Grid */}
             <div className="grid md:grid-cols-3 gap-6 mb-8">
               <Card className="glass border-border/50">
