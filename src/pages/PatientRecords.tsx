@@ -37,8 +37,8 @@ const PatientRecords = () => {
 
       {/* Main Content */}
       <main className="container mx-auto p-6">
-        <PatientList onViewPatient={(patient) => {
-          navigate('/', { state: { selectedPatient: patient } });
+        <PatientList onViewPatient={(patientId) => {
+          navigate('/', { state: { selectedPatient: { id: patientId } } });
         }} />
       </main>
     </div>
