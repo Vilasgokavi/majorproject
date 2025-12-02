@@ -311,50 +311,6 @@ const Index = () => {
               </CardContent>
             </Card>
 
-            {/* Features Grid */}
-            <div className="grid md:grid-cols-3 gap-6 mb-8">
-              <Card className="glass border-border/50">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Upload className="w-5 h-5 text-primary" />
-                    Upload Data
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">
-                    Import medical files
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="glass border-border/50">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Brain className="w-5 h-5 text-secondary" />
-                    Knowledge Graph
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">
-                    3D visualization
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="glass border-border/50">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Zap className="w-5 h-5 text-healthcare-green" />
-                    AI Insights
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">
-                    Smart analysis
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
 
             {/* Uploaded Files Display */}
             {uploadedFiles.length > 0 && (
