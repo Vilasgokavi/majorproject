@@ -59,6 +59,11 @@ ${nodes.filter((n: any) => n.type === 'procedure').map((n: any) =>
   `- ${n.label}: ${JSON.stringify(n.data || {})}`
 ).join('\n')}
 
+Lab Results:
+${nodes.filter((n: any) => n.type === 'lab_result' || n.type === 'lab').map((n: any) => 
+  `- ${n.label}: ${JSON.stringify(n.data || {})}`
+).join('\n')}
+
 Key Relationships:
 ${edges.map((e: any) => {
   const source = nodes.find((n: any) => n.id === e.source);
@@ -66,39 +71,6 @@ ${edges.map((e: any) => {
   return `- ${source?.label} ${e.label || '→'} ${target?.label}`;
 }).join('\n')}
 `;
-
-    const prompt = `You are an expert medical AI assistant analyzing a complete healthcare knowledge graph.
-
-${graphSummary}
-
-Provide a comprehensive clinical analysis with actionable suggestions in the following format:
-
-## 📋 PATIENT SUMMARY
-Brief overview of the patient(s) including age, gender, and primary health status
-
-## 🏥 DIAGNOSIS SUMMARY
-List all identified conditions with accurate ICD-10 codes:
-- Condition Name: ICD-10 Code (X00.X) - Brief description
-
-## 💊 CURRENT TREATMENT ANALYSIS
-Evaluate medications, procedures, and current treatment plan effectiveness
-
-## ⚠️ RISK ASSESSMENT
-Identify comorbidities, drug interactions, and potential complications
-
-## 💡 CLINICAL SUGGESTIONS & RECOMMENDATIONS
-Provide 3-5 specific, actionable recommendations:
-1. Additional diagnostic tests needed
-2. Treatment optimizations or medication adjustments
-3. Lifestyle interventions
-4. Monitoring requirements
-5. Specialist referrals if needed
-
-## 📊 ICD-10 CODE SUMMARY
-List all applicable ICD-10 codes in format:
-Code: X00.X - Condition Description
-
-Be thorough, evidence-based, and ensure all ICD-10 codes are accurate and up-to-date. Focus on actionable insights and clear recommendations.`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -109,25 +81,155 @@ Be thorough, evidence-based, and ensure all ICD-10 codes are accurate and up-to-
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
         messages: [
-          { role: 'system', content: 'You are an expert medical AI assistant specializing in healthcare analytics and ICD-10 coding. Always provide accurate ICD-10 codes for medical conditions.' },
-          { role: 'user', content: prompt }
+          { 
+            role: 'system', 
+            content: 'You are an expert medical AI assistant specializing in healthcare analytics and ICD-10 coding. Always provide accurate ICD-10 codes for medical conditions.' 
+          },
+          { 
+            role: 'user', 
+            content: `Analyze this healthcare knowledge graph and provide clinical insights:\n\n${graphSummary}` 
+          }
         ],
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "provide_clinical_analysis",
+              description: "Provide a comprehensive clinical analysis of the patient's health data",
+              parameters: {
+                type: "object",
+                properties: {
+                  patientSummary: {
+                    type: "string",
+                    description: "Brief overview of the patient including demographics and primary health status"
+                  },
+                  keyInsights: {
+                    type: "array",
+                    items: { type: "string" },
+                    description: "3-5 key clinical insights about the patient's health"
+                  },
+                  treatmentRecommendations: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        title: { type: "string" },
+                        description: { type: "string" },
+                        priority: { type: "string", enum: ["High", "Medium", "Low"] }
+                      },
+                      required: ["title", "description", "priority"]
+                    },
+                    description: "Treatment recommendations with priority levels"
+                  },
+                  riskFactors: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        title: { type: "string" },
+                        description: { type: "string" },
+                        severity: { type: "string", enum: ["High", "Medium", "Low"] }
+                      },
+                      required: ["title", "description", "severity"]
+                    },
+                    description: "Risk factors and potential complications"
+                  },
+                  suggestedTests: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        name: { type: "string" },
+                        reason: { type: "string" },
+                        urgency: { type: "string", enum: ["Urgent", "Routine", "Follow-up"] }
+                      },
+                      required: ["name", "reason", "urgency"]
+                    },
+                    description: "Recommended diagnostic tests"
+                  },
+                  icd10Codes: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        code: { type: "string" },
+                        description: { type: "string" }
+                      },
+                      required: ["code", "description"]
+                    },
+                    description: "Applicable ICD-10 codes with descriptions"
+                  },
+                  diagnosisSummary: {
+                    type: "string",
+                    description: "Summary of all diagnoses and their relationships"
+                  },
+                  medicationAnalysis: {
+                    type: "string",
+                    description: "Analysis of current medications, interactions, and effectiveness"
+                  }
+                },
+                required: ["patientSummary", "keyInsights", "treatmentRecommendations", "riskFactors", "suggestedTests", "icd10Codes", "diagnosisSummary", "medicationAnalysis"]
+              }
+            }
+          }
+        ],
+        tool_choice: { type: "function", function: { name: "provide_clinical_analysis" } }
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error('AI gateway error:', response.status, errorText);
+      
+      if (response.status === 429) {
+        return new Response(
+          JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ error: 'AI credits exhausted. Please add credits to continue.' }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       throw new Error(`AI gateway error: ${response.status}`);
     }
 
     const data = await response.json();
-    const analysis = data.choices[0].message.content;
+    console.log('AI Response received');
+
+    // Extract tool call arguments
+    let structuredAnalysis;
+    
+    if (data.choices[0].message.tool_calls && data.choices[0].message.tool_calls.length > 0) {
+      const toolCall = data.choices[0].message.tool_calls[0];
+      structuredAnalysis = JSON.parse(toolCall.function.arguments);
+      console.log('Structured analysis extracted from tool call');
+    } else {
+      // Fallback: create basic structure from content
+      const content = data.choices[0].message.content || '';
+      structuredAnalysis = {
+        patientSummary: content.substring(0, 200),
+        keyInsights: [content],
+        treatmentRecommendations: [],
+        riskFactors: [],
+        suggestedTests: [],
+        icd10Codes: [],
+        diagnosisSummary: content,
+        medicationAnalysis: ''
+      };
+      console.log('Fallback: used content as analysis');
+    }
 
     console.log('Graph analysis completed');
 
     return new Response(
-      JSON.stringify({ analysis }),
+      JSON.stringify({ 
+        analysis: JSON.stringify(structuredAnalysis),
+        structured: structuredAnalysis 
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

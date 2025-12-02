@@ -573,7 +573,11 @@ const Index = () => {
                 Intelligent analysis and recommendations based on your knowledge graph
               </p>
             </div>
-            <AIInsights selectedNode={selectedNode} graphData={graphData} />
+            <AIInsights 
+              selectedNode={selectedNode} 
+              graphData={graphData} 
+              graphAnalysis={graphAnalysis}
+            />
           </div>
         );
 
