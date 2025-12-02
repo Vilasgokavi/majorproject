@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { FileUpload } from '@/components/ui/file-upload';
 import { KnowledgeGraph } from '@/components/ui/knowledge-graph';
@@ -25,6 +26,18 @@ const Index = () => {
   const [currentPatientId, setCurrentPatientId] = useState<string | null>(null);
   const [viewingPatient, setViewingPatient] = useState(false);
   const { toast } = useToast();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Handle navigation from Patient Records page
+  useEffect(() => {
+    const state = location.state as { selectedPatient?: { id: string } } | null;
+    if (state?.selectedPatient?.id) {
+      loadPatientGraph(state.selectedPatient.id);
+      // Clear the state to prevent re-loading on subsequent renders
+      navigate('/', { replace: true, state: {} });
+    }
+  }, [location.state]);
 
   const handleNodeClick = (node: any) => {
     setSelectedNode(node);
