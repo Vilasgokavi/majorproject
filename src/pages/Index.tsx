@@ -21,6 +21,7 @@ const Index = () => {
   const [nodeAnalysis, setNodeAnalysis] = useState<string>('');
   const [isLoadingNode, setIsLoadingNode] = useState(false);
   const [graphAnalysis, setGraphAnalysis] = useState<string>('');
+  const [structuredAnalysis, setStructuredAnalysis] = useState<any>(null);
   const [isLoadingGraph, setIsLoadingGraph] = useState(false);
   const [patientInfo, setPatientInfo] = useState<{ name: string; age: string; pid: string } | null>(null);
   const [currentPatientId, setCurrentPatientId] = useState<string | null>(null);
@@ -104,6 +105,19 @@ const Index = () => {
       if (graph) {
         setGraphData({ nodes: graph.nodes, edges: graph.edges });
         setGraphAnalysis(graph.graph_analysis || "");
+        
+        // Try to parse stored analysis as JSON for structured data
+        if (graph.graph_analysis) {
+          try {
+            const parsed = JSON.parse(graph.graph_analysis);
+            setStructuredAnalysis(parsed);
+          } catch {
+            // If stored as string, try to get structured data from icd10_codes column
+            if (graph.icd10_codes) {
+              setStructuredAnalysis({ icd10Codes: graph.icd10_codes } as any);
+            }
+          }
+        }
       }
 
       const { data: files } = await supabase
@@ -148,6 +162,7 @@ const Index = () => {
     setUploadedFiles([]);
     setGraphData(null);
     setGraphAnalysis("");
+    setStructuredAnalysis(null);
     setNodeAnalysis("");
     setSelectedNode(null);
     setPatientInfo(null);
@@ -205,6 +220,11 @@ const Index = () => {
 
         const data = await response.json();
         setGraphAnalysis(data.analysis);
+        
+        // Store structured data directly from response
+        if (data.structured) {
+          setStructuredAnalysis(data.structured);
+        }
 
         // Save to database if we have a current patient
         if (currentPatientId) {
@@ -449,43 +469,44 @@ const Index = () => {
             />
 
             {/* ICD-10 Codes Section */}
-            {graphAnalysis && !isLoadingGraph && (
-              <Card className="glass border-border/50 bg-gradient-to-r from-primary/10 to-secondary/10">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Brain className="w-5 h-5 text-primary" />
-                    ICD-10 Codes
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {isLoadingGraph ? (
-                    <div className="flex items-center justify-center py-4">
-                      <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {extractICD10Codes(graphAnalysis).length > 0 ? (
-                        extractICD10Codes(graphAnalysis).map((item, idx) => (
-                          <div 
-                            key={idx} 
-                            className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 border border-border/50"
+            <Card className="glass border-border/50 bg-gradient-to-r from-primary/10 to-secondary/10">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Brain className="w-5 h-5 text-primary" />
+                  ICD-10 Codes
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isLoadingGraph ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                    <span className="ml-2 text-muted-foreground">Generating ICD-10 codes...</span>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {structuredAnalysis?.icd10Codes && structuredAnalysis.icd10Codes.length > 0 ? (
+                      structuredAnalysis.icd10Codes.map((item: { code: string; description: string }, idx: number) => (
+                        <div 
+                          key={idx} 
+                          className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 border border-border/50"
+                        >
+                          <Badge 
+                            className="px-3 py-1 text-sm font-mono bg-primary text-primary-foreground shrink-0"
                           >
-                            <Badge 
-                              className="px-3 py-1 text-sm font-mono bg-primary text-primary-foreground shrink-0"
-                            >
-                              {item.code}
-                            </Badge>
-                            <p className="text-sm text-foreground leading-relaxed">{item.description}</p>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-sm text-muted-foreground">No ICD-10 codes identified in this analysis</p>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
+                            {item.code}
+                          </Badge>
+                          <p className="text-sm text-foreground leading-relaxed">{item.description}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        {graphData ? 'Analyzing graph for ICD-10 codes...' : 'Upload medical data to generate ICD-10 codes'}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
             {/* Node Analysis Section */}
             {selectedNode && (
@@ -577,6 +598,7 @@ const Index = () => {
               selectedNode={selectedNode} 
               graphData={graphData} 
               graphAnalysis={graphAnalysis}
+              structuredAnalysis={structuredAnalysis}
             />
           </div>
         );

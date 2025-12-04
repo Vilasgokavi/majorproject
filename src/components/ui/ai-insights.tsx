@@ -35,12 +35,14 @@ interface AIInsightsProps {
   selectedNode?: any;
   graphData?: { nodes: any[]; edges: any[] };
   graphAnalysis?: string;
+  structuredAnalysis?: StructuredAnalysis | null;
 }
 
 export const AIInsights: React.FC<AIInsightsProps> = ({
   selectedNode,
   graphData,
   graphAnalysis,
+  structuredAnalysis: propStructuredAnalysis,
 }) => {
   const [nodeAnalysis, setNodeAnalysis] = useState<string>('');
   const [localGraphAnalysis, setLocalGraphAnalysis] = useState<string>('');
@@ -51,10 +53,13 @@ export const AIInsights: React.FC<AIInsightsProps> = ({
 
   // Use prop if provided, otherwise use local state
   const currentAnalysis = graphAnalysis || localGraphAnalysis;
+  
+  // Use prop structured data if provided, otherwise use local parsed data
+  const effectiveStructuredData = propStructuredAnalysis || structuredData;
 
-  // Parse structured analysis when it changes
+  // Parse structured analysis when it changes (only if no prop provided)
   useEffect(() => {
-    if (currentAnalysis) {
+    if (!propStructuredAnalysis && currentAnalysis) {
       try {
         const parsed = JSON.parse(currentAnalysis);
         setStructuredData(parsed);
@@ -63,7 +68,7 @@ export const AIInsights: React.FC<AIInsightsProps> = ({
         setStructuredData(null);
       }
     }
-  }, [currentAnalysis]);
+  }, [currentAnalysis, propStructuredAnalysis]);
 
   // Analyze selected node when it changes
   useEffect(() => {
@@ -214,7 +219,7 @@ export const AIInsights: React.FC<AIInsightsProps> = ({
   return (
     <div className="space-y-6">
       {/* Patient Summary */}
-      {structuredData?.patientSummary && (
+      {effectiveStructuredData?.patientSummary && (
         <Card className="glass border-border/50 bg-gradient-to-r from-primary/5 to-secondary/5">
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -225,7 +230,7 @@ export const AIInsights: React.FC<AIInsightsProps> = ({
             </div>
           </CardHeader>
           <CardContent>
-            <p className="text-sm leading-relaxed">{structuredData.patientSummary}</p>
+            <p className="text-sm leading-relaxed">{effectiveStructuredData.patientSummary}</p>
           </CardContent>
         </Card>
       )}
@@ -246,9 +251,9 @@ export const AIInsights: React.FC<AIInsightsProps> = ({
               <Loader2 className="w-6 h-6 animate-spin text-primary" />
               <span className="ml-3 text-muted-foreground">Generating AI insights...</span>
             </div>
-          ) : structuredData?.keyInsights && structuredData.keyInsights.length > 0 ? (
+          ) : effectiveStructuredData?.keyInsights && effectiveStructuredData.keyInsights.length > 0 ? (
             <div className="space-y-3">
-              {structuredData.keyInsights.map((insight, idx) => (
+              {effectiveStructuredData.keyInsights.map((insight, idx) => (
                 <div key={idx} className="p-4 bg-muted/30 border border-border/50 rounded-lg">
                   <p className="text-sm leading-relaxed">{insight}</p>
                 </div>
@@ -277,9 +282,9 @@ export const AIInsights: React.FC<AIInsightsProps> = ({
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="w-6 h-6 animate-spin text-secondary" />
               </div>
-            ) : structuredData?.treatmentRecommendations && structuredData.treatmentRecommendations.length > 0 ? (
+            ) : effectiveStructuredData?.treatmentRecommendations && effectiveStructuredData.treatmentRecommendations.length > 0 ? (
               <div className="space-y-4">
-                {structuredData.treatmentRecommendations.map((treatment, idx) => (
+                {effectiveStructuredData.treatmentRecommendations.map((treatment, idx) => (
                   <div key={idx} className="p-4 bg-secondary/5 border border-secondary/20 rounded-lg">
                     <div className="flex items-start justify-between mb-2">
                       <h4 className="font-semibold text-sm flex-1 pr-2">{treatment.title}</h4>
@@ -312,9 +317,9 @@ export const AIInsights: React.FC<AIInsightsProps> = ({
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="w-6 h-6 animate-spin text-destructive" />
               </div>
-            ) : structuredData?.riskFactors && structuredData.riskFactors.length > 0 ? (
+            ) : effectiveStructuredData?.riskFactors && effectiveStructuredData.riskFactors.length > 0 ? (
               <div className="space-y-4">
-                {structuredData.riskFactors.map((risk, idx) => (
+                {effectiveStructuredData.riskFactors.map((risk, idx) => (
                   <div key={idx} className="p-4 bg-destructive/5 border border-destructive/20 rounded-lg">
                     <div className="flex items-start justify-between mb-2">
                       <h4 className="font-semibold text-sm flex-1 pr-2">{risk.title}</h4>
@@ -348,9 +353,9 @@ export const AIInsights: React.FC<AIInsightsProps> = ({
             <div className="flex items-center justify-center py-8">
               <Loader2 className="w-6 h-6 animate-spin text-healthcare-green" />
             </div>
-          ) : structuredData?.suggestedTests && structuredData.suggestedTests.length > 0 ? (
+          ) : effectiveStructuredData?.suggestedTests && effectiveStructuredData.suggestedTests.length > 0 ? (
             <div className="grid sm:grid-cols-2 gap-4">
-              {structuredData.suggestedTests.map((test, idx) => (
+              {effectiveStructuredData.suggestedTests.map((test, idx) => (
                 <div key={idx} className="p-4 bg-healthcare-green/5 border border-healthcare-green/20 rounded-lg">
                   <div className="flex items-start justify-between mb-2">
                     <h4 className="font-semibold text-sm">{test.name}</h4>
@@ -371,7 +376,7 @@ export const AIInsights: React.FC<AIInsightsProps> = ({
       {/* Diagnosis & Medication Analysis */}
       <div className="grid md:grid-cols-2 gap-6">
         {/* Diagnosis Summary */}
-        {structuredData?.diagnosisSummary && (
+        {effectiveStructuredData?.diagnosisSummary && (
           <Card className="glass border-border/50">
             <CardHeader>
               <div className="flex items-center gap-3">
@@ -382,13 +387,13 @@ export const AIInsights: React.FC<AIInsightsProps> = ({
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-sm leading-relaxed">{structuredData.diagnosisSummary}</p>
+              <p className="text-sm leading-relaxed">{effectiveStructuredData.diagnosisSummary}</p>
             </CardContent>
           </Card>
         )}
 
         {/* Medication Analysis */}
-        {structuredData?.medicationAnalysis && (
+        {effectiveStructuredData?.medicationAnalysis && (
           <Card className="glass border-border/50">
             <CardHeader>
               <div className="flex items-center gap-3">
@@ -399,14 +404,14 @@ export const AIInsights: React.FC<AIInsightsProps> = ({
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-sm leading-relaxed">{structuredData.medicationAnalysis}</p>
+              <p className="text-sm leading-relaxed">{effectiveStructuredData.medicationAnalysis}</p>
             </CardContent>
           </Card>
         )}
       </div>
 
       {/* ICD-10 Codes */}
-      {structuredData?.icd10Codes && structuredData.icd10Codes.length > 0 && (
+      {effectiveStructuredData?.icd10Codes && effectiveStructuredData.icd10Codes.length > 0 && (
         <Card className="glass border-border/50 bg-gradient-to-r from-primary/10 to-secondary/10">
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -418,7 +423,7 @@ export const AIInsights: React.FC<AIInsightsProps> = ({
           </CardHeader>
           <CardContent>
             <div className="grid sm:grid-cols-2 gap-3">
-              {structuredData.icd10Codes.map((item, idx) => (
+              {effectiveStructuredData.icd10Codes.map((item, idx) => (
                 <div 
                   key={idx} 
                   className="flex items-start gap-3 p-3 rounded-lg bg-background/50 border border-border/50"
