@@ -1,8 +1,9 @@
 import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload, X, FileText, Image, FileSpreadsheet } from 'lucide-react';
+import { Upload, X, FileText, Image, FileSpreadsheet, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -12,6 +13,8 @@ interface UploadedFile {
   size: number;
   type: string;
   file: File;
+  status?: 'pending' | 'processing' | 'valid' | 'invalid';
+  nodeCount?: number;
 }
 
 interface PatientInfo {
@@ -28,6 +31,13 @@ interface FileUploadProps {
   existingGraphData?: { nodes: any[]; edges: any[] } | null;
 }
 
+interface ProcessingStats {
+  total: number;
+  processed: number;
+  valid: number;
+  invalid: number;
+}
+
 export const FileUpload: React.FC<FileUploadProps> = ({
   onFilesUploaded,
   onFileRemoved,
@@ -38,7 +48,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [isProcessing, setIsProcessing] = useState(false);
-  const [processingQueue, setProcessingQueue] = useState<UploadedFile[]>([]);
+  const [processingStats, setProcessingStats] = useState<ProcessingStats | null>(null);
   const { toast } = useToast();
 
   const mergeGraphData = (existing: { nodes: any[]; edges: any[] } | null, newData: { nodes: any[]; edges: any[] }) => {
@@ -69,15 +79,18 @@ export const FileUpload: React.FC<FileUploadProps> = ({
     };
   };
 
-  const processWithAI = async (file: UploadedFile, accumulatedGraph: { nodes: any[]; edges: any[] } | null) => {
+  const updateFileStatus = (fileId: string, status: UploadedFile['status'], nodeCount?: number) => {
+    setUploadedFiles(prev => prev.map(f => 
+      f.id === fileId ? { ...f, status, nodeCount } : f
+    ));
+  };
+
+  const processWithAI = async (file: UploadedFile, accumulatedGraph: { nodes: any[]; edges: any[] } | null): Promise<{ graph: { nodes: any[]; edges: any[] } | null; isValid: boolean }> => {
+    updateFileStatus(file.id, 'processing');
+    
     try {
       const formData = new FormData();
       formData.append('file', file.file);
-
-      toast({
-        title: "Processing file",
-        description: `Extracting entities from ${file.name}...`,
-      });
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-knowledge`,
@@ -93,53 +106,65 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
       const graphData = await response.json();
 
+      // Check if non-medical data
       if (!response.ok || graphData.error || graphData.isMedical === false) {
-        removeFile(file.id);
-        toast({
-          title: "Invalid file",
-          description: graphData.error || 'Failed to process file. Please upload medical data only.',
-          variant: "destructive",
-        });
-        return accumulatedGraph;
+        updateFileStatus(file.id, 'invalid');
+        return { graph: accumulatedGraph, isValid: false };
       }
       
-      // Merge new data with accumulated graph
+      // Valid medical data - merge with accumulated graph
       const mergedGraph = mergeGraphData(accumulatedGraph, graphData);
+      const newNodesCount = graphData.nodes?.length || 0;
+      updateFileStatus(file.id, 'valid', newNodesCount);
       
-      toast({
-        title: "File processed",
-        description: `Added ${graphData.nodes?.length || 0} entities from ${file.name}`,
-      });
-
-      return mergedGraph;
+      return { graph: mergedGraph, isValid: true };
     } catch (error) {
       console.error('Error processing file:', error);
-      removeFile(file.id);
-      toast({
-        title: "Processing failed",
-        description: error instanceof Error ? error.message : "Failed to extract knowledge graph",
-        variant: "destructive",
-      });
-      return accumulatedGraph;
+      updateFileStatus(file.id, 'invalid');
+      return { graph: accumulatedGraph, isValid: false };
     }
   };
 
   const processAllFiles = async (files: UploadedFile[]) => {
     setIsProcessing(true);
+    setProcessingStats({ total: files.length, processed: 0, valid: 0, invalid: 0 });
     
-    // Start with existing graph data if available
     let accumulatedGraph = existingGraphData || null;
+    let validCount = 0;
+    let invalidCount = 0;
 
-    for (const file of files) {
-      accumulatedGraph = await processWithAI(file, accumulatedGraph);
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const result = await processWithAI(file, accumulatedGraph);
+      accumulatedGraph = result.graph;
+      
+      if (result.isValid) {
+        validCount++;
+      } else {
+        invalidCount++;
+      }
+      
+      setProcessingStats({
+        total: files.length,
+        processed: i + 1,
+        valid: validCount,
+        invalid: invalidCount,
+      });
     }
 
-    if (accumulatedGraph && accumulatedGraph.nodes?.length > 0) {
+    // Show final summary
+    if (validCount > 0 && accumulatedGraph && accumulatedGraph.nodes?.length > 0) {
       toast({
-        title: "All files processed!",
-        description: `Knowledge graph now has ${accumulatedGraph.nodes.length} nodes and ${accumulatedGraph.edges.length} relationships`,
+        title: "Processing Complete",
+        description: `${validCount} medical file(s) processed. ${invalidCount > 0 ? `${invalidCount} non-medical file(s) skipped.` : ''} Graph has ${accumulatedGraph.nodes.length} nodes.`,
       });
       onKnowledgeGraphGenerated?.(accumulatedGraph);
+    } else if (invalidCount > 0 && validCount === 0) {
+      toast({
+        title: "No Medical Data Found",
+        description: `All ${invalidCount} file(s) were non-medical and skipped. Please upload medical records, prescriptions, or lab results.`,
+        variant: "destructive",
+      });
     }
 
     setIsProcessing(false);
@@ -154,6 +179,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       size: file.size,
       type: file.type,
       file,
+      status: 'pending' as const,
     }));
 
     // Upload files to storage and save metadata
@@ -322,10 +348,12 @@ export const FileUpload: React.FC<FileUploadProps> = ({
             isDragActive ? 'text-primary' : 'text-muted-foreground'
           }`} />
           <h3 className="text-lg font-semibold mb-2">
-            {isDragActive ? 'Drop files here' : isProcessing ? 'Processing...' : 'Upload Medical Data'}
+            {isDragActive ? 'Drop files here' : isProcessing ? 'Processing Files...' : 'Upload Medical Data'}
           </h3>
           <p className="text-muted-foreground mb-4">
-            {isProcessing ? 'Extracting knowledge graph with AI...' : 'Drag and drop your files or click to browse'}
+            {isProcessing && processingStats 
+              ? `Processing ${processingStats.processed}/${processingStats.total} files (${processingStats.valid} valid, ${processingStats.invalid} skipped)` 
+              : 'Drag and drop multiple files or click to browse. Non-medical files will be automatically filtered.'}
           </p>
           <div className="flex flex-wrap gap-2 justify-center text-sm text-muted-foreground">
             <span className="px-2 py-1 bg-muted rounded-md">CSV</span>
@@ -341,17 +369,50 @@ export const FileUpload: React.FC<FileUploadProps> = ({
           <h4 className="font-semibold mb-4 flex items-center gap-2">
             <FileText className="w-5 h-5" />
             Uploaded Files ({uploadedFiles.length})
+            {processingStats && (
+              <span className="text-sm font-normal text-muted-foreground ml-auto">
+                {processingStats.valid} medical, {processingStats.invalid} skipped
+              </span>
+            )}
           </h4>
           <div className="space-y-3">
             {uploadedFiles.map((file) => (
-              <div key={file.id} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                <div className="text-primary">
-                  {getFileIcon(file.type)}
+              <div 
+                key={file.id} 
+                className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${
+                  file.status === 'valid' 
+                    ? 'bg-green-500/10 border border-green-500/30' 
+                    : file.status === 'invalid' 
+                    ? 'bg-red-500/10 border border-red-500/30' 
+                    : file.status === 'processing'
+                    ? 'bg-primary/10 border border-primary/30'
+                    : 'bg-muted/50'
+                }`}
+              >
+                <div className={`${
+                  file.status === 'valid' ? 'text-green-500' : 
+                  file.status === 'invalid' ? 'text-red-500' : 'text-primary'
+                }`}>
+                  {file.status === 'processing' ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : file.status === 'valid' ? (
+                    <CheckCircle2 className="w-5 h-5" />
+                  ) : file.status === 'invalid' ? (
+                    <XCircle className="w-5 h-5" />
+                  ) : (
+                    getFileIcon(file.type)
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">{file.name}</p>
                   <p className="text-sm text-muted-foreground">
-                    {formatFileSize(file.size)}
+                    {file.status === 'valid' && file.nodeCount 
+                      ? `${file.nodeCount} entities extracted` 
+                      : file.status === 'invalid' 
+                      ? 'Non-medical data - skipped'
+                      : file.status === 'processing'
+                      ? 'Analyzing content...'
+                      : formatFileSize(file.size)}
                   </p>
                   {uploadProgress[file.id] !== undefined && uploadProgress[file.id] < 100 && (
                     <Progress 
@@ -360,14 +421,26 @@ export const FileUpload: React.FC<FileUploadProps> = ({
                     />
                   )}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => removeFile(file.id)}
-                  className="text-muted-foreground hover:text-destructive"
-                >
-                  <X className="w-4 h-4" />
-                </Button>
+                <div className="flex items-center gap-2">
+                  {file.status === 'valid' && (
+                    <Badge variant="outline" className="bg-green-500/20 text-green-500 border-green-500/30">
+                      Medical
+                    </Badge>
+                  )}
+                  {file.status === 'invalid' && (
+                    <Badge variant="outline" className="bg-red-500/20 text-red-500 border-red-500/30">
+                      Skipped
+                    </Badge>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeFile(file.id)}
+                    className="text-muted-foreground hover:text-destructive"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
