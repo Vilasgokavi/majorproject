@@ -25,6 +25,7 @@ interface FileUploadProps {
   onFileRemoved?: (fileId: string) => void;
   onKnowledgeGraphGenerated?: (graphData: any) => void;
   patientInfo: PatientInfo | null;
+  existingGraphData?: { nodes: any[]; edges: any[] } | null;
 }
 
 export const FileUpload: React.FC<FileUploadProps> = ({
@@ -32,21 +33,50 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   onFileRemoved,
   onKnowledgeGraphGenerated,
   patientInfo,
+  existingGraphData,
 }) => {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingQueue, setProcessingQueue] = useState<UploadedFile[]>([]);
   const { toast } = useToast();
 
-  const processWithAI = async (file: UploadedFile) => {
-    setIsProcessing(true);
+  const mergeGraphData = (existing: { nodes: any[]; edges: any[] } | null, newData: { nodes: any[]; edges: any[] }) => {
+    if (!existing || !existing.nodes?.length) {
+      return newData;
+    }
+
+    // Create maps for deduplication based on node labels
+    const existingNodeLabels = new Set(existing.nodes.map((n: any) => n.label?.toLowerCase()));
+    const existingEdgeKeys = new Set(
+      existing.edges.map((e: any) => `${e.source}-${e.target}-${e.label}`.toLowerCase())
+    );
+
+    // Filter new nodes that don't already exist
+    const uniqueNewNodes = newData.nodes.filter(
+      (n: any) => !existingNodeLabels.has(n.label?.toLowerCase())
+    );
+
+    // Filter new edges that don't already exist
+    const uniqueNewEdges = newData.edges.filter(
+      (e: any) => !existingEdgeKeys.has(`${e.source}-${e.target}-${e.label}`.toLowerCase())
+    );
+
+    // Merge nodes and edges
+    return {
+      nodes: [...existing.nodes, ...uniqueNewNodes],
+      edges: [...existing.edges, ...uniqueNewEdges],
+    };
+  };
+
+  const processWithAI = async (file: UploadedFile, accumulatedGraph: { nodes: any[]; edges: any[] } | null) => {
     try {
       const formData = new FormData();
       formData.append('file', file.file);
 
       toast({
         title: "Processing file",
-        description: "Extracting entities and relationships with AI...",
+        description: `Extracting entities from ${file.name}...`,
       });
 
       const response = await fetch(
@@ -55,7 +85,6 @@ export const FileUpload: React.FC<FileUploadProps> = ({
           method: 'POST',
           body: formData,
           headers: {
-            // Required for calling Supabase Edge Functions from the browser
             'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
             'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
           },
@@ -64,40 +93,56 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
       const graphData = await response.json();
 
-      // Check if it's a validation error (non-medical data)
       if (!response.ok || graphData.error || graphData.isMedical === false) {
-        // Remove the invalid file from the list
         removeFile(file.id);
-        
         toast({
           title: "Invalid file",
           description: graphData.error || 'Failed to process file. Please upload medical data only.',
           variant: "destructive",
         });
-        setIsProcessing(false);
-        return;
+        return accumulatedGraph;
       }
       
+      // Merge new data with accumulated graph
+      const mergedGraph = mergeGraphData(accumulatedGraph, graphData);
+      
       toast({
-        title: "Success!",
-        description: `Generated knowledge graph with ${graphData.nodes?.length || 0} nodes`,
+        title: "File processed",
+        description: `Added ${graphData.nodes?.length || 0} entities from ${file.name}`,
       });
 
-      onKnowledgeGraphGenerated?.(graphData);
+      return mergedGraph;
     } catch (error) {
       console.error('Error processing file:', error);
-      
-      // Remove the file if processing failed
       removeFile(file.id);
-      
       toast({
         title: "Processing failed",
         description: error instanceof Error ? error.message : "Failed to extract knowledge graph",
         variant: "destructive",
       });
-    } finally {
-      setIsProcessing(false);
+      return accumulatedGraph;
     }
+  };
+
+  const processAllFiles = async (files: UploadedFile[]) => {
+    setIsProcessing(true);
+    
+    // Start with existing graph data if available
+    let accumulatedGraph = existingGraphData || null;
+
+    for (const file of files) {
+      accumulatedGraph = await processWithAI(file, accumulatedGraph);
+    }
+
+    if (accumulatedGraph && accumulatedGraph.nodes?.length > 0) {
+      toast({
+        title: "All files processed!",
+        description: `Knowledge graph now has ${accumulatedGraph.nodes.length} nodes and ${accumulatedGraph.edges.length} relationships`,
+      });
+      onKnowledgeGraphGenerated?.(accumulatedGraph);
+    }
+
+    setIsProcessing(false);
   };
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
@@ -183,12 +228,12 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
     toast({
       title: "Files uploaded",
-      description: `${newFiles.length} file(s) uploaded successfully`,
+      description: `${newFiles.length} file(s) uploaded. Processing...`,
     });
 
-    // Process the first file with AI
+    // Process ALL files with AI and merge results
     if (newFiles.length > 0) {
-      setTimeout(() => processWithAI(newFiles[0]), 1200);
+      setTimeout(() => processAllFiles(newFiles), 500);
     }
   }, [onFilesUploaded, toast, onKnowledgeGraphGenerated, patientInfo]);
 

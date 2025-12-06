@@ -402,8 +402,9 @@ const Index = () => {
             {patientInfo && (
               <FileUpload
                 patientInfo={patientInfo}
+                existingGraphData={graphData}
                 onFilesUploaded={(files) => {
-                  setUploadedFiles(files);
+                  setUploadedFiles(prev => [...prev, ...files]);
                 }}
                 onFileRemoved={(fileId) => {
                   setUploadedFiles(prev => prev.filter(f => f.id !== fileId));
