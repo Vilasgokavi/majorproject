@@ -44,12 +44,133 @@ const Index = () => {
     setSelectedNode(node);
   };
 
-  const handleDeleteFile = (fileId: string) => {
-    setUploadedFiles(prev => prev.filter(f => f.id !== fileId));
-    toast({
-      title: 'File deleted',
-      description: 'The uploaded file has been removed',
-    });
+  const handleDeleteFile = async (fileId: string, fileName?: string) => {
+    const newFiles = uploadedFiles.filter(f => f.id !== fileId);
+    setUploadedFiles(newFiles);
+    
+    // Delete from storage and database if we have patient info
+    if (patientInfo && fileName) {
+      try {
+        const filePath = `${patientInfo.pid}/${fileName}`;
+        await supabase.storage.from('patient-files').remove([filePath]);
+        await supabase.from('patient_files').delete().eq('id', fileId);
+      } catch (error) {
+        console.error('Error deleting file from storage:', error);
+      }
+    }
+    
+    // Regenerate knowledge graph from remaining valid files
+    if (newFiles.length === 0) {
+      // No files left, clear the graph
+      setGraphData(null);
+      setGraphAnalysis('');
+      setStructuredAnalysis(null);
+      setNodeAnalysis('');
+      setSelectedNode(null);
+      
+      // Clear from database if we have a patient
+      if (currentPatientId) {
+        await supabase.from('knowledge_graphs').delete().eq('patient_id', currentPatientId);
+      }
+      
+      toast({
+        title: 'All files removed',
+        description: 'Knowledge graph has been cleared',
+      });
+    } else {
+      toast({
+        title: 'File deleted',
+        description: 'Knowledge graph will be regenerated from remaining files',
+      });
+      
+      // Trigger regeneration by re-extracting from remaining valid files
+      regenerateGraphFromFiles(newFiles.filter(f => f.status === 'valid'));
+    }
+  };
+
+  const regenerateGraphFromFiles = async (validFiles: any[]) => {
+    if (validFiles.length === 0) {
+      setGraphData(null);
+      setGraphAnalysis('');
+      setStructuredAnalysis(null);
+      return;
+    }
+
+    setIsLoadingGraph(true);
+    
+    try {
+      // Re-extract knowledge from all remaining valid files
+      const extractionPromises = validFiles.map(async (file) => {
+        if (!file.file) {
+          // For loaded files from database, we can't re-process
+          // The graph data should already be in the database
+          return null;
+        }
+        
+        const formData = new FormData();
+        formData.append('file', file.file);
+
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-knowledge`,
+          {
+            method: 'POST',
+            body: formData,
+            headers: {
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+              'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            },
+          }
+        );
+
+        if (!response.ok) return null;
+        const data = await response.json();
+        if (data.isMedical === false || data.error) return null;
+        return data;
+      });
+
+      const results = await Promise.all(extractionPromises);
+      const validResults = results.filter(r => r !== null);
+
+      if (validResults.length === 0) {
+        setGraphData(null);
+        setGraphAnalysis('');
+        setStructuredAnalysis(null);
+        return;
+      }
+
+      // Merge all valid extractions
+      let mergedGraph = { nodes: [] as any[], edges: [] as any[] };
+      const seenNodeLabels = new Set<string>();
+      const seenEdgeKeys = new Set<string>();
+
+      for (const graph of validResults) {
+        for (const node of graph.nodes || []) {
+          const label = node.label?.toLowerCase();
+          if (!seenNodeLabels.has(label)) {
+            seenNodeLabels.add(label);
+            mergedGraph.nodes.push(node);
+          }
+        }
+        for (const edge of graph.edges || []) {
+          const key = `${edge.source}-${edge.target}-${edge.label}`.toLowerCase();
+          if (!seenEdgeKeys.has(key)) {
+            seenEdgeKeys.add(key);
+            mergedGraph.edges.push(edge);
+          }
+        }
+      }
+
+      setGraphData(mergedGraph);
+    } catch (error) {
+      console.error('Error regenerating graph:', error);
+      toast({
+        title: 'Regeneration failed',
+        description: 'Could not regenerate knowledge graph',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoadingGraph(false);
+    }
   };
 
   const saveKnowledgeGraph = async (patientId: string, nodes: any[], edges: any[], analysis: string) => {
@@ -406,8 +527,8 @@ const Index = () => {
                 onFilesUploaded={(files) => {
                   setUploadedFiles(prev => [...prev, ...files]);
                 }}
-                onFileRemoved={(fileId) => {
-                  setUploadedFiles(prev => prev.filter(f => f.id !== fileId));
+                onFileRemoved={(fileId, fileName) => {
+                  handleDeleteFile(fileId, fileName);
                 }}
                 onKnowledgeGraphGenerated={(data) => {
                   setGraphData(data);

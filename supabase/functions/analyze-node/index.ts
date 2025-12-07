@@ -1,4 +1,3 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -21,9 +20,9 @@ serve(async (req) => {
 
     console.log('Analyzing node:', node.label);
 
-    // Build context from connected nodes
+    // Build minimal context from connected nodes
     const connectedNodes = allNodes.filter((n: any) => 
-      node.connections.includes(n.id)
+      node.connections?.includes(n.id) || false
     );
 
     const relatedEdges = allEdges.filter((e: any) => 
@@ -33,28 +32,11 @@ serve(async (req) => {
     const context = `
 Node: ${node.label}
 Type: ${node.type}
-Data: ${JSON.stringify(node.data || {})}
-
-Connected to:
-${connectedNodes.map((n: any) => `- ${n.label} (${n.type})`).join('\n')}
-
-Relationships:
-${relatedEdges.map((e: any) => `- ${e.label || 'connected to'}`).join('\n')}
+Connected: ${connectedNodes.map((n: any) => `${n.label}(${n.type})`).join(', ') || 'none'}
+Relationships: ${relatedEdges.map((e: any) => e.label || 'connected').join(', ') || 'none'}
 `;
 
-    const prompt = `You are a medical AI assistant analyzing a healthcare knowledge graph node.
-
-${context}
-
-Provide a comprehensive analysis including:
-1. Summary of this node and its significance
-2. Clinical implications
-3. Relationships with connected entities
-4. Risk factors or considerations
-5. Relevant ICD-10 codes (if applicable for medical conditions)
-
-Be specific, clinical, and actionable. If this is a condition, include the ICD-10 code.`;
-
+    // Use faster model and concise prompt for speed
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -62,10 +44,16 @@ Be specific, clinical, and actionable. If this is a condition, include the ICD-1
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'google/gemini-2.5-flash-lite',
         messages: [
-          { role: 'system', content: 'You are an expert medical AI assistant specializing in healthcare knowledge graphs and ICD-10 coding.' },
-          { role: 'user', content: prompt }
+          { 
+            role: 'system', 
+            content: 'You are a medical AI. Provide brief, actionable analysis. Include ICD-10 codes for conditions.' 
+          },
+          { 
+            role: 'user', 
+            content: `Analyze this medical entity:\n${context}\n\nProvide: 1) Brief summary 2) Clinical significance 3) Key relationships 4) ICD-10 codes if applicable. Be concise.` 
+          }
         ],
       }),
     });
@@ -73,6 +61,20 @@ Be specific, clinical, and actionable. If this is a condition, include the ICD-1
     if (!response.ok) {
       const errorText = await response.text();
       console.error('AI gateway error:', response.status, errorText);
+      
+      if (response.status === 429) {
+        return new Response(
+          JSON.stringify({ error: 'Rate limit exceeded. Please try again.' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ error: 'AI credits exhausted.' }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       throw new Error(`AI gateway error: ${response.status}`);
     }
 
