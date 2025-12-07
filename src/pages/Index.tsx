@@ -45,13 +45,15 @@ const Index = () => {
   };
 
   const handleDeleteFile = async (fileId: string, fileName?: string) => {
+    const deletedFile = uploadedFiles.find(f => f.id === fileId);
     const newFiles = uploadedFiles.filter(f => f.id !== fileId);
     setUploadedFiles(newFiles);
     
     // Delete from storage and database if we have patient info
-    if (patientInfo && fileName) {
+    if (patientInfo && (fileName || deletedFile?.name)) {
+      const fileNameToDelete = fileName || deletedFile?.name;
       try {
-        const filePath = `${patientInfo.pid}/${fileName}`;
+        const filePath = `${patientInfo.pid}/${fileNameToDelete}`;
         await supabase.storage.from('patient-files').remove([filePath]);
         await supabase.from('patient_files').delete().eq('id', fileId);
       } catch (error) {
@@ -88,12 +90,123 @@ const Index = () => {
         });
         regenerateGraphFromFiles(filesWithData);
       } else {
-        // Files loaded from DB - cannot regenerate, just show message
+        // Files loaded from DB - fetch from storage and regenerate
         toast({
           title: 'File deleted',
-          description: 'File removed. Note: Graph cannot be regenerated for previously saved patients.',
+          description: 'Regenerating knowledge graph from remaining files...',
         });
+        regenerateGraphFromStorageFiles(newFiles);
       }
+    }
+  };
+
+  const regenerateGraphFromStorageFiles = async (files: any[]) => {
+    if (!patientInfo || files.length === 0) {
+      setGraphData(null);
+      setGraphAnalysis('');
+      setStructuredAnalysis(null);
+      return;
+    }
+
+    setIsLoadingGraph(true);
+
+    try {
+      // Download files from storage and re-extract knowledge
+      const extractionPromises = files.map(async (file) => {
+        try {
+          const filePath = `${patientInfo.pid}/${file.name}`;
+          
+          // Download file from storage
+          const { data: fileData, error } = await supabase.storage
+            .from('patient-files')
+            .download(filePath);
+          
+          if (error || !fileData) {
+            console.error('Error downloading file:', error);
+            return null;
+          }
+
+          // Create a File object from the blob
+          const downloadedFile = new File([fileData], file.name, { type: file.type });
+          
+          // Send to extract-knowledge edge function
+          const formData = new FormData();
+          formData.append('file', downloadedFile);
+
+          const response = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-knowledge`,
+            {
+              method: 'POST',
+              body: formData,
+              headers: {
+                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+                'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+              },
+            }
+          );
+
+          if (!response.ok) return null;
+          const data = await response.json();
+          if (data.isMedical === false || data.error) return null;
+          return data;
+        } catch (error) {
+          console.error('Error processing file from storage:', error);
+          return null;
+        }
+      });
+
+      const results = await Promise.all(extractionPromises);
+      const validResults = results.filter(r => r !== null);
+
+      if (validResults.length === 0) {
+        setGraphData(null);
+        setGraphAnalysis('');
+        setStructuredAnalysis(null);
+        toast({
+          title: 'No valid data',
+          description: 'No medical data found in remaining files',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Merge all valid extractions
+      let mergedGraph = { nodes: [] as any[], edges: [] as any[] };
+      const seenNodeLabels = new Set<string>();
+      const seenEdgeKeys = new Set<string>();
+
+      for (const graph of validResults) {
+        for (const node of graph.nodes || []) {
+          const label = node.label?.toLowerCase();
+          if (!seenNodeLabels.has(label)) {
+            seenNodeLabels.add(label);
+            mergedGraph.nodes.push(node);
+          }
+        }
+        for (const edge of graph.edges || []) {
+          const key = `${edge.source}-${edge.target}-${edge.label}`.toLowerCase();
+          if (!seenEdgeKeys.has(key)) {
+            seenEdgeKeys.add(key);
+            mergedGraph.edges.push(edge);
+          }
+        }
+      }
+
+      setGraphData(mergedGraph);
+      
+      toast({
+        title: 'Graph updated',
+        description: `Knowledge graph regenerated with ${mergedGraph.nodes.length} nodes`,
+      });
+    } catch (error) {
+      console.error('Error regenerating graph from storage:', error);
+      toast({
+        title: 'Regeneration failed',
+        description: 'Could not regenerate knowledge graph',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoadingGraph(false);
     }
   };
 
@@ -499,7 +612,7 @@ const Index = () => {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleDeleteFile(file.id)}
+                            onClick={() => handleDeleteFile(file.id, file.name)}
                             className="text-destructive hover:text-destructive hover:bg-destructive/10"
                           >
                             <Trash2 className="w-4 h-4" />
