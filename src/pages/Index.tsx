@@ -59,7 +59,7 @@ const Index = () => {
       }
     }
     
-    // Regenerate knowledge graph from remaining valid files
+    // Handle knowledge graph update
     if (newFiles.length === 0) {
       // No files left, clear the graph
       setGraphData(null);
@@ -78,13 +78,22 @@ const Index = () => {
         description: 'Knowledge graph has been cleared',
       });
     } else {
-      toast({
-        title: 'File deleted',
-        description: 'Knowledge graph will be regenerated from remaining files',
-      });
+      // Check if files have original file data for re-extraction
+      const filesWithData = newFiles.filter(f => f.file && f.status === 'valid');
       
-      // Trigger regeneration by re-extracting from remaining valid files
-      regenerateGraphFromFiles(newFiles.filter(f => f.status === 'valid'));
+      if (filesWithData.length > 0) {
+        toast({
+          title: 'File deleted',
+          description: 'Knowledge graph will be regenerated from remaining files',
+        });
+        regenerateGraphFromFiles(filesWithData);
+      } else {
+        // Files loaded from DB - cannot regenerate, just show message
+        toast({
+          title: 'File deleted',
+          description: 'File removed. Note: Graph cannot be regenerated for previously saved patients.',
+        });
+      }
     }
   };
 
