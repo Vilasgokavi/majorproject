@@ -25,7 +25,7 @@ interface PatientInfo {
 
 interface FileUploadProps {
   onFilesUploaded?: (files: UploadedFile[]) => void;
-  onFileRemoved?: (fileId: string) => void;
+  onFileRemoved?: (fileId: string, fileName?: string) => void;
   onKnowledgeGraphGenerated?: (graphData: any) => void;
   patientInfo: PatientInfo | null;
   existingGraphData?: { nodes: any[]; edges: any[] } | null;
@@ -252,14 +252,14 @@ export const FileUpload: React.FC<FileUploadProps> = ({
     },
   });
 
-  const removeFile = (fileId: string) => {
+  const removeFile = (fileId: string, fileName: string) => {
     setUploadedFiles(prev => prev.filter(f => f.id !== fileId));
     setUploadProgress(prev => {
       const newProgress = { ...prev };
       delete newProgress[fileId];
       return newProgress;
     });
-    onFileRemoved?.(fileId);
+    onFileRemoved?.(fileId, fileName);
   };
 
   const getFileIcon = (type: string) => {
@@ -415,7 +415,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => removeFile(file.id)}
+                    onClick={() => removeFile(file.id, file.name)}
                     className="text-muted-foreground hover:text-destructive"
                   >
                     <X className="w-4 h-4" />
