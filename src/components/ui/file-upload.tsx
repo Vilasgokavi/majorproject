@@ -129,40 +129,52 @@ export const FileUpload: React.FC<FileUploadProps> = ({
     setIsProcessing(true);
     setProcessingStats({ total: files.length, processed: 0, valid: 0, invalid: 0 });
     
-    let accumulatedGraph = existingGraphData || null;
     let validCount = 0;
     let invalidCount = 0;
+    let processedCount = 0;
+    const allResults: { nodes: any[]; edges: any[] }[] = [];
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const result = await processWithAI(file, accumulatedGraph);
-      accumulatedGraph = result.graph;
+    // Process all files in parallel for speed
+    const processPromises = files.map(async (file) => {
+      const result = await processWithAI(file, null);
+      processedCount++;
       
-      if (result.isValid) {
+      if (result.isValid && result.graph) {
         validCount++;
+        allResults.push(result.graph);
       } else {
         invalidCount++;
       }
       
       setProcessingStats({
         total: files.length,
-        processed: i + 1,
+        processed: processedCount,
         valid: validCount,
         invalid: invalidCount,
       });
+      
+      return result;
+    });
+
+    await Promise.all(processPromises);
+
+    // Merge all valid results with existing graph
+    let finalGraph = existingGraphData || null;
+    for (const graphResult of allResults) {
+      finalGraph = mergeGraphData(finalGraph, graphResult);
     }
 
     // Show final summary
-    if (validCount > 0 && accumulatedGraph && accumulatedGraph.nodes?.length > 0) {
+    if (validCount > 0 && finalGraph && finalGraph.nodes?.length > 0) {
       toast({
         title: "Processing Complete",
-        description: `${validCount} medical file(s) processed. ${invalidCount > 0 ? `${invalidCount} non-medical file(s) skipped.` : ''} Graph has ${accumulatedGraph.nodes.length} nodes.`,
+        description: `${validCount} medical file(s) processed. ${invalidCount > 0 ? `${invalidCount} skipped.` : ''} ${finalGraph.nodes.length} nodes.`,
       });
-      onKnowledgeGraphGenerated?.(accumulatedGraph);
+      onKnowledgeGraphGenerated?.(finalGraph);
     } else if (invalidCount > 0 && validCount === 0) {
       toast({
         title: "No Medical Data Found",
-        description: `All ${invalidCount} file(s) were non-medical and skipped. Please upload medical records, prescriptions, or lab results.`,
+        description: `All ${invalidCount} file(s) were non-medical. Upload medical records or lab results.`,
         variant: "destructive",
       });
     }
@@ -182,86 +194,54 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       status: 'pending' as const,
     }));
 
-    // Upload files to storage and save metadata
-    for (const fileData of newFiles) {
-      setUploadProgress(prev => ({ ...prev, [fileData.id]: 0 }));
-      
-      try {
-        // Find or create patient in database
-        let patientId: string | null = null;
-        const { data: patient, error: patientError } = await supabase
+    setUploadedFiles(prev => [...prev, ...newFiles]);
+    onFilesUploaded?.(newFiles);
+
+    // Get or create patient once (not per file)
+    let patientId: string | null = null;
+    try {
+      const { data: patient } = await supabase
+        .from('patients')
+        .select('id')
+        .eq('pid', patientInfo.pid)
+        .single();
+
+      if (patient) {
+        patientId = patient.id;
+      } else {
+        const { data: inserted } = await supabase
           .from('patients')
+          .insert({ pid: patientInfo.pid, name: patientInfo.name, age: patientInfo.age })
           .select('id')
-          .eq('pid', patientInfo.pid)
           .single();
+        patientId = inserted?.id || null;
+      }
+    } catch (error) {
+      console.error('Patient lookup error:', error);
+    }
 
-        if (patientError || !patient) {
-          const { data: inserted, error: insertError } = await supabase
-            .from('patients')
-            .insert({
-              pid: patientInfo.pid,
-              name: patientInfo.name,
-              age: patientInfo.age,
-            })
-            .select('id')
-            .single();
-
-          if (insertError) throw insertError;
-          patientId = inserted.id;
-        } else {
-          patientId = patient.id;
-        }
-
-        // Upload file to storage
-        const filePath = `${patientInfo.pid}/${fileData.name}`;
-        const { error: uploadError } = await supabase.storage
-          .from('patient-files')
-          .upload(filePath, fileData.file, {
-            cacheControl: '3600',
-            upsert: false,
-          });
-
-        if (uploadError) throw uploadError;
-
-        // Save file metadata to database
-        const { error: metadataError } = await supabase
-          .from('patient_files')
-          .insert({
-            patient_id: patientId as string,
+    // Upload files in parallel (background - don't block AI processing)
+    if (patientId) {
+      Promise.all(newFiles.map(async (fileData) => {
+        try {
+          const filePath = `${patientInfo.pid}/${fileData.name}`;
+          await supabase.storage.from('patient-files').upload(filePath, fileData.file, { cacheControl: '3600', upsert: true });
+          await supabase.from('patient_files').insert({
+            patient_id: patientId,
             file_name: fileData.name,
             file_size: fileData.size,
             file_type: fileData.type,
             file_path: filePath,
           });
-
-        if (metadataError) throw metadataError;
-
-        // Update progress to 100%
-        setUploadProgress(prev => ({ ...prev, [fileData.id]: 100 }));
-      } catch (error) {
-        console.error('Error uploading file:', error);
-        toast({
-          title: "Upload failed",
-          description: `Failed to upload ${fileData.name}`,
-          variant: "destructive",
-        });
-        continue;
-      }
+        } catch (error) {
+          console.error('File storage error:', error);
+        }
+      }));
     }
 
-    setUploadedFiles(prev => [...prev, ...newFiles]);
-    onFilesUploaded?.(newFiles);
-
-    toast({
-      title: "Files uploaded",
-      description: `${newFiles.length} file(s) uploaded. Processing...`,
-    });
-
-    // Process ALL files with AI and merge results
-    if (newFiles.length > 0) {
-      setTimeout(() => processAllFiles(newFiles), 500);
-    }
-  }, [onFilesUploaded, toast, onKnowledgeGraphGenerated, patientInfo]);
+    // Start AI processing immediately (don't wait for storage)
+    processAllFiles(newFiles);
+  }, [onFilesUploaded, onKnowledgeGraphGenerated, patientInfo, existingGraphData]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
