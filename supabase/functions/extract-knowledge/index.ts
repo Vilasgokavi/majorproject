@@ -45,17 +45,62 @@ serve(async (req) => {
       content = await file.text();
     }
 
-    // First, validate if the content is medical-related
-    console.log("Validating if content is medical-related...");
+    // First, validate if the content is medical-related using detailed analysis
+    console.log("Validating if content is medical-related with enhanced accuracy...");
     
+    const medicalValidationPrompt = `You are a highly accurate medical content classifier. Your task is to analyze the provided content and determine if it contains GENUINE medical/healthcare information.
+
+CLASSIFY AS MEDICAL (respond "MEDICAL") if the content contains ANY of these:
+- Patient records, medical histories, or clinical notes
+- Prescriptions, medication lists, or drug information
+- Lab results, blood tests, diagnostic reports
+- Medical imaging (X-rays, MRIs, CT scans, ultrasounds, ECGs)
+- Diagnoses, symptoms, or medical conditions
+- Treatment plans, surgical records, or procedure notes
+- Vital signs, body measurements for health purposes
+- Hospital/clinic documents, discharge summaries
+- Medical forms, insurance documents related to healthcare
+- Vaccination records, immunization charts
+- Medical device readings (glucose monitors, BP monitors, etc.)
+- Pathology reports, biopsy results
+- Dental records, eye examination reports
+- Mental health assessments, therapy notes
+- Medical research data with patient information
+- Healthcare provider notes or referrals
+
+CLASSIFY AS NON-MEDICAL (respond "NON-MEDICAL") if the content contains:
+- General photos (selfies, landscapes, objects, food, pets)
+- Non-health documents (invoices, receipts, contracts)
+- Random text without health context
+- Entertainment content (memes, social media posts)
+- Generic data without medical terminology
+- Educational content not related to a specific patient's health
+- News articles, blog posts (unless containing patient data)
+- Product listings, advertisements (even for health products without patient data)
+
+IMPORTANT GUIDELINES:
+1. Look for medical terminology: diagnoses, medications, procedures, anatomy terms
+2. Check for structured medical data: patient IDs, dates of service, provider names
+3. Identify clinical context: hospital names, clinic references, doctor signatures
+4. For images: Look for medical equipment, clinical settings, anatomical images, medical charts/graphs
+5. For text: Look for ICD codes, medical abbreviations (BP, HR, CBC, etc.), dosage information
+
+Analyze thoroughly like Google Lens scanning every detail. Be STRICT but ACCURATE.
+
+Respond with ONLY one word: "MEDICAL" or "NON-MEDICAL"`;
+
     const validationMessages: any[] = [];
     if (imageBase64) {
+      validationMessages.push({
+        role: "system",
+        content: medicalValidationPrompt
+      });
       validationMessages.push({
         role: "user",
         content: [
           {
             type: "text",
-            text: "Analyze this image and determine if it contains medical information such as: patient data, medical records, prescriptions, diagnoses, symptoms, treatments, lab results, medical imaging, or healthcare-related content. Respond with 'yes' if it's medical-related, or 'no' if it's not."
+            text: "Scan this image thoroughly. Examine every detail - text, symbols, objects, context, and visual elements. Determine if this contains genuine medical/healthcare information."
           },
           {
             type: "image_url",
@@ -65,8 +110,12 @@ serve(async (req) => {
       });
     } else {
       validationMessages.push({
+        role: "system",
+        content: medicalValidationPrompt
+      });
+      validationMessages.push({
         role: "user",
-        content: `Analyze this text and determine if it contains medical information such as: patient data, medical records, prescriptions, diagnoses, symptoms, treatments, lab results, or healthcare-related content. Respond with 'yes' if it's medical-related, or 'no' if it's not.\n\nContent:\n${content}`
+        content: `Scan this text thoroughly. Examine every word, number, and pattern. Determine if this contains genuine medical/healthcare information.\n\nContent to analyze:\n${content}`
       });
     }
 
@@ -77,29 +126,37 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-pro",
         messages: validationMessages,
       }),
     });
 
     if (!validationResponse.ok) {
+      const errorText = await validationResponse.text();
+      console.error("Validation API error:", validationResponse.status, errorText);
       throw new Error(`Validation failed: ${validationResponse.status}`);
     }
 
     const validationData = await validationResponse.json();
-    const validationResult = validationData.choices?.[0]?.message?.content?.toLowerCase() || "";
+    const validationResult = validationData.choices?.[0]?.message?.content?.trim().toUpperCase() || "";
     
     console.log("Validation result:", validationResult);
     
-    if (!validationResult.includes("yes")) {
+    // Strict checking - only accept if explicitly MEDICAL
+    const isMedical = validationResult.includes("MEDICAL") && !validationResult.includes("NON-MEDICAL");
+    
+    if (!isMedical) {
+      console.log("Content classified as non-medical");
       return new Response(
         JSON.stringify({ 
-          error: "Non-medical data detected. Please upload medical records, patient data, prescriptions, lab results, or other healthcare-related information.",
+          error: "Non-medical data detected. Please upload medical records, patient data, prescriptions, lab results, medical imaging, or other healthcare-related information.",
           isMedical: false
         }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+    
+    console.log("Content verified as medical data");
 
     // Prepare messages for AI knowledge extraction
     const messages: any[] = [];
