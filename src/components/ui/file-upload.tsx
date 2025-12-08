@@ -249,6 +249,9 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       'text/csv': ['.csv'],
       'text/plain': ['.txt'],
       'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'],
+      'application/pdf': ['.pdf'],
+      'application/msword': ['.doc'],
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
     },
   });
 
@@ -265,6 +268,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   const getFileIcon = (type: string) => {
     if (type.startsWith('image/')) return <Image className="w-5 h-5" />;
     if (type.includes('csv')) return <FileSpreadsheet className="w-5 h-5" />;
+    if (type.includes('pdf') || type.includes('word') || type.includes('document')) return <FileText className="w-5 h-5 text-red-400" />;
     return <FileText className="w-5 h-5" />;
   };
 
@@ -339,6 +343,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({
             <span className="px-2 py-1 bg-muted rounded-md">CSV</span>
             <span className="px-2 py-1 bg-muted rounded-md">Text Notes</span>
             <span className="px-2 py-1 bg-muted rounded-md">Medical Images</span>
+            <span className="px-2 py-1 bg-muted rounded-md">PDF</span>
+            <span className="px-2 py-1 bg-muted rounded-md">DOC/DOCX</span>
           </div>
         </div>
       </div>
