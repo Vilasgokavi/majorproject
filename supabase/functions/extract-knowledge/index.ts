@@ -26,7 +26,8 @@ serve(async (req) => {
     }
 
     let content = "";
-    let imageBase64: string | null = null;
+    let fileBase64: string | null = null;
+    let mimeType = file.type;
 
     // Handle different file types
     if (file.type.startsWith("image/")) {
@@ -38,59 +39,47 @@ serve(async (req) => {
         binary += String.fromCharCode(bytes[i]);
       }
       const base64 = btoa(binary);
-      imageBase64 = `data:${file.type};base64,${base64}`;
+      fileBase64 = `data:${file.type};base64,${base64}`;
       content = "Extract all medical entities and relationships from this medical image.";
+    } else if (file.type === "application/pdf" || file.type.includes("word") || file.type.includes("document") || file.name.endsWith('.pdf') || file.name.endsWith('.doc') || file.name.endsWith('.docx')) {
+      // For PDF and DOCX, convert to base64 and use vision model to extract text
+      const arrayBuffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      let binary = '';
+      for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      const base64 = btoa(binary);
+      
+      // Determine proper mime type
+      if (file.name.endsWith('.pdf') || file.type === "application/pdf") {
+        mimeType = "application/pdf";
+      } else if (file.name.endsWith('.docx')) {
+        mimeType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+      } else if (file.name.endsWith('.doc')) {
+        mimeType = "application/msword";
+      }
+      
+      fileBase64 = `data:${mimeType};base64,${base64}`;
+      content = "Extract all medical entities and relationships from this document.";
     } else {
       // For text/CSV files, read content
       content = await file.text();
     }
 
-    // First, validate if the content is medical-related using detailed analysis
-    console.log("Validating if content is medical-related with enhanced accuracy...");
+    // First, validate if the content is medical-related using fast model
+    console.log("Validating if content is medical-related...");
     
-    const medicalValidationPrompt = `You are a highly accurate medical content classifier. Your task is to analyze the provided content and determine if it contains GENUINE medical/healthcare information.
+    const medicalValidationPrompt = `You are a fast medical content classifier. Analyze the content and respond ONLY "MEDICAL" or "NON-MEDICAL".
 
-CLASSIFY AS MEDICAL (respond "MEDICAL") if the content contains ANY of these:
-- Patient records, medical histories, or clinical notes
-- Prescriptions, medication lists, or drug information
-- Lab results, blood tests, diagnostic reports
-- Medical imaging (X-rays, MRIs, CT scans, ultrasounds, ECGs)
-- Diagnoses, symptoms, or medical conditions
-- Treatment plans, surgical records, or procedure notes
-- Vital signs, body measurements for health purposes
-- Hospital/clinic documents, discharge summaries
-- Medical forms, insurance documents related to healthcare
-- Vaccination records, immunization charts
-- Medical device readings (glucose monitors, BP monitors, etc.)
-- Pathology reports, biopsy results
-- Dental records, eye examination reports
-- Mental health assessments, therapy notes
-- Medical research data with patient information
-- Healthcare provider notes or referrals
+MEDICAL: Patient records, prescriptions, lab results, medical imaging (X-rays, CT, MRI), diagnoses, treatment plans, clinical notes, medical forms, pathology reports.
 
-CLASSIFY AS NON-MEDICAL (respond "NON-MEDICAL") if the content contains:
-- General photos (selfies, landscapes, objects, food, pets)
-- Non-health documents (invoices, receipts, contracts)
-- Random text without health context
-- Entertainment content (memes, social media posts)
-- Generic data without medical terminology
-- Educational content not related to a specific patient's health
-- News articles, blog posts (unless containing patient data)
-- Product listings, advertisements (even for health products without patient data)
+NON-MEDICAL: Selfies, landscapes, food photos, general documents, memes, non-health content.
 
-IMPORTANT GUIDELINES:
-1. Look for medical terminology: diagnoses, medications, procedures, anatomy terms
-2. Check for structured medical data: patient IDs, dates of service, provider names
-3. Identify clinical context: hospital names, clinic references, doctor signatures
-4. For images: Look for medical equipment, clinical settings, anatomical images, medical charts/graphs
-5. For text: Look for ICD codes, medical abbreviations (BP, HR, CBC, etc.), dosage information
-
-Analyze thoroughly like Google Lens scanning every detail. Be STRICT but ACCURATE.
-
-Respond with ONLY one word: "MEDICAL" or "NON-MEDICAL"`;
+Respond with ONE word only: "MEDICAL" or "NON-MEDICAL"`;
 
     const validationMessages: any[] = [];
-    if (imageBase64) {
+    if (fileBase64) {
       validationMessages.push({
         role: "system",
         content: medicalValidationPrompt
@@ -100,11 +89,11 @@ Respond with ONLY one word: "MEDICAL" or "NON-MEDICAL"`;
         content: [
           {
             type: "text",
-            text: "Scan this image thoroughly. Examine every detail - text, symbols, objects, context, and visual elements. Determine if this contains genuine medical/healthcare information."
+            text: "Classify this content. Is it medical or non-medical?"
           },
           {
             type: "image_url",
-            image_url: { url: imageBase64 }
+            image_url: { url: fileBase64 }
           }
         ]
       });
@@ -115,7 +104,7 @@ Respond with ONLY one word: "MEDICAL" or "NON-MEDICAL"`;
       });
       validationMessages.push({
         role: "user",
-        content: `Scan this text thoroughly. Examine every word, number, and pattern. Determine if this contains genuine medical/healthcare information.\n\nContent to analyze:\n${content}`
+        content: `Classify: ${content.substring(0, 2000)}`
       });
     }
 
@@ -126,7 +115,7 @@ Respond with ONLY one word: "MEDICAL" or "NON-MEDICAL"`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
+        model: "google/gemini-2.5-flash-lite",
         messages: validationMessages,
       }),
     });
@@ -161,18 +150,18 @@ Respond with ONLY one word: "MEDICAL" or "NON-MEDICAL"`;
     // Prepare messages for AI knowledge extraction
     const messages: any[] = [];
     
-    if (imageBase64) {
+    if (fileBase64) {
       messages.push({
         role: "user",
         content: [
           {
             type: "text",
-            text: "You are a medical knowledge extraction AI. Extract entities (patients, conditions, medications, procedures, symptoms) and their relationships from this medical image.\n\nIMPORTANT: Identify the main DISEASE or CONDITION first - this will be positioned at the center of the knowledge graph. Extract all related symptoms, medications, procedures, and patient information.\n\nReturn JSON with 'nodes' (id, label, type, x, y, connections, data) and 'edges' (source, target, label, strength). The 'condition' type nodes are most important and will be centered."
+            text: "Extract medical entities (conditions, medications, symptoms, procedures) and relationships from this document. Return JSON with 'nodes' and 'edges'. Mark main disease/condition as type 'condition'."
           },
           {
             type: "image_url",
             image_url: {
-              url: imageBase64
+              url: fileBase64
             }
           }
         ]
@@ -180,28 +169,9 @@ Respond with ONLY one word: "MEDICAL" or "NON-MEDICAL"`;
     } else {
       messages.push({
         role: "user",
-        content: `You are a medical knowledge extraction AI. Extract entities (patients, conditions, medications, procedures, symptoms) and their relationships from this medical data:
+        content: `Extract medical entities and relationships from: ${content.substring(0, 4000)}
 
-${content}
-
-IMPORTANT: Identify the main DISEASE or CONDITION first - this is the most critical entity that will be positioned at the CENTER of the knowledge graph. Extract all related symptoms, medications, procedures, and patient information connected to this condition.
-
-Return a JSON object with 'nodes' and 'edges' arrays. Each node MUST have:
-- id: unique identifier (lowercase, underscore separated)
-- label: display name
-- type: one of (patient, condition, medication, procedure, symptom) - make sure to mark the main disease/diagnosis as 'condition'
-- x: any number (coordinates will be auto-calculated with condition at center)
-- y: any number (coordinates will be auto-calculated with condition at center)
-- connections: array of connected node ids
-- data: object with additional information
-
-Each edge MUST have:
-- source: node id
-- target: node id
-- label: relationship description
-- strength: number between 0-1
-
-Focus on identifying the primary medical CONDITION and building the knowledge graph around it.`
+Return JSON with 'nodes' (id, label, type: patient|condition|medication|procedure|symptom, x, y, connections, data) and 'edges' (source, target, label, strength 0-1). Mark main disease as 'condition' type.`
       });
     }
 
